@@ -1,0 +1,98 @@
+name: ai-platform
+
+# 只承载中间件。API 与 Celery worker 跑在宿主机的 conda 环境 ai_platform 中。
+# 启动：docker compose up -d
+# 查看：docker compose ps
+
+services:
+  postgres:
+    # 官方 postgres 镜像不含向量扩展；pgvector 镜像与之同主版本，数据目录兼容
+    image: pgvector/pgvector:pg16
+    container_name: aip-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ai_platform}
+      POSTGRES_USER: ${POSTGRES_USER:-ai_platform}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ai_platform}
+      TZ: ${TZ:-Asia/Shanghai}
+    ports:
+      # 5432 常被宿主已有 PG 占用，默认让位到 5434
+      - "${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ai_platform} -d ${POSTGRES_DB:-ai_platform}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  neo4j:
+    image: neo4j:5-community
+    container_name: aip-neo4j
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-ai_platform_neo4j}
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 1G
+      NEO4J_server_memory_pagecache_size: 512m
+      NEO4J_dbms_security_auth__minimum__password__length: 8
+    ports:
+      - "${NEO4J_HTTP_PORT:-7474}:7474"
+      - "${NEO4J_BOLT_PORT:-7687}:7687"
+    volumes:
+      - neo4jdata:/data
+    healthcheck:
+      test:
+        ["CMD-SHELL", "cypher-shell -u neo4j -p ${NEO4J_PASSWORD:-ai_platform_neo4j} 'RETURN 1' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 40s
+
+  # 官方 minio/minio 镜像已从 Docker Hub 下架，改用本地已有的 pgsty/silo。
+  # Silo 是 MinIO 的 AGPL 分支，S3 API、环境变量、console 完全一致，
+  # 后端仍按 MinIO 协议（minio-py / S3）访问，无需改动业务代码。
+  silo:
+    image: pgsty/silo:RELEASE.2026-10-26T00-00-00Z
+    container_name: aip-silo
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-ai_platform}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-ai_platform_minio}
+    ports:
+      - "${MINIO_API_PORT:-9100}:9000"
+      - "${MINIO_CONSOLE_PORT:-9101}:9001"
+    volumes:
+      - silodata:/data
+    healthcheck:
+      # 镜像基于 ubi-micro，没有 curl/wget，用自带的 healthcheck 子命令探活
+      test: ["CMD", "silo", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  redis:
+    image: redis:7-alpine
+    container_name: aip-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  pgdata:
+  neo4jdata:
+  silodata:
+  redisdata:

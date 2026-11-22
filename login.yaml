@@ -1,0 +1,45 @@
+- generic [ref=e3]:
+  - generic [ref=e5]:
+    - generic [ref=e6]: Enterprise Knowledge Platform
+    - heading "把散落的文档 变成可审核的知识" [level=1] [ref=e7]: 把散落的文档变成可审核的知识
+    - paragraph [ref=e8]: 上传 → 解析 → 抽取 → 审核 → 图谱。全链路留痕，本体驱动约束，候选实体先审后入库。
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - generic [ref=e11]: "01"
+        - text: 文档接入
+      - generic [ref=e12]:
+        - generic [ref=e13]: "02"
+        - text: 结构解析
+      - generic [ref=e14]:
+        - generic [ref=e15]: "03"
+        - text: 知识抽取
+      - generic [ref=e16]:
+        - generic [ref=e17]: "04"
+        - text: 人工审核
+    - generic [ref=e18]:
+      - generic [ref=e19]:
+        - strong [ref=e20]: 200 MB
+        - generic [ref=e21]: 单文件上限
+      - generic [ref=e22]:
+        - strong [ref=e23]: 3 级
+        - generic [ref=e24]: 子图检索深度
+      - generic [ref=e25]:
+        - strong [ref=e26]: 7 天
+        - generic [ref=e27]: 合并可撤销窗口
+  - generic [ref=e29]:
+    - generic [ref=e30]:
+      - generic [ref=e31]: AI
+      - generic [ref=e32]:
+        - generic [ref=e33]: 知识中台
+        - generic [ref=e34]: Sign in to continue
+    - heading "账号登录" [level=2] [ref=e35]
+    - paragraph [ref=e36]: 使用管理员分配的账号登录，角色决定可见菜单与操作权限。
+    - generic [ref=e37]:
+      - textbox "用户名" [ref=e46]: admin
+      - generic [ref=e50]:
+        - textbox "密码" [ref=e56]: Admin@12345
+        - generic [ref=e58] [cursor=pointer]
+      - button "登录" [ref=e62] [cursor=pointer]
+    - generic [ref=e64]:
+      - generic [ref=e65]: 种子账号
+      - code [ref=e66]: admin / Admin@12345

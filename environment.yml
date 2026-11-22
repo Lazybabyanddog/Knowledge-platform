@@ -1,0 +1,9 @@
+# conda 只负责 Python 本体与系统级二进制；业务依赖走 backend/pyproject.toml。
+# 创建：conda env create -f environment.yml
+# 更新：conda run -n ai_platform pip install -e "./backend[dev]"
+name: ai_platform
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip

@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-platform-backend"
+version = "0.1.0"
+description = "企业知识库平台后端：文档解析、知识图谱、审批治理"
+requires-python = ">=3.11,<3.13"
+
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "sqlalchemy>=2.0.25",
+    "alembic>=1.13",
+    "psycopg[binary]>=3.1",
+    "celery[redis]>=5.3",
+    "redis>=5.0",
+    "neo4j>=5.14",
+    "langchain>=0.2",
+    "langgraph>=0.2",
+    "minio>=7.2",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "PyJWT>=2.8",
+    "bcrypt>=4.1",
+    "python-multipart>=0.0.9",
+    "httpx>=0.27",
+    "pgvector>=0.2",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.3",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["B008"]
