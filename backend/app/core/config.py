@@ -86,7 +86,6 @@ class Settings(BaseSettings):
     )
 
     # ---- 解析 ----
-    parse_max_attempts: int = 3
     parse_quality_threshold: int = 60
     parse_block_page_size_max: int = 200
     parse_block_retention_days: int = 90
@@ -98,6 +97,27 @@ class Settings(BaseSettings):
     extract_max_attempts: int = 3
     graph_subgraph_max_nodes: int = 200
     merge_undo_window_days: int = 7
+    # 跨文档对齐后同一身份节点会被多个任务并发写入，"读既有 → 合并 → 写入"
+    # 这段临界区需要串行化；拿不到锁时最多等这么久，超时降级写入。
+    graph_persist_lock_timeout_seconds: float = 5.0
+
+    # ---- 任务重试与恢复 ----
+    # attempt 是执行序号（只增），下面三个预算按来源分开计，互不侵占。
+    # 自动重试置 0 即回到"失败后只能人工重试"的旧行为。
+    task_auto_retry_max_attempts: int = 3
+    task_auto_retry_backoff_seconds: Annotated[list[int], NoDecode] = Field(
+        default_factory=lambda: [30, 120, 300]
+    )
+    task_downgrade_max_attempts: int = 1
+    task_downgrade_batch_ratio: float = 0.5
+    task_downgrade_batch_min: int = 2
+    task_manual_revive_max_attempts: int = 2
+    task_skip_failed_batches_enabled: bool = True
+    # 看护：心跳过期即判死，回 PENDING 续跑或落 FAILED，二者由预算决定
+    task_heartbeat_ttl_seconds: int = 120
+    task_stale_threshold_seconds: int = 300
+    task_watchdog_enabled: bool = True
+    task_watchdog_interval_seconds: int = 60
 
     # ---- LLM ----
     llm_provider: str = "openai"
@@ -106,6 +126,22 @@ class Settings(BaseSettings):
     llm_base_url: str = ""
     llm_temperature: float = 0.0
     llm_timeout_seconds: int = 120
+    # 进程内重试：只消抖动，不替代任务级重试
+    llm_max_attempts: int = 3
+    llm_retry_base_delay_seconds: float = 1.0
+    llm_retry_max_delay_seconds: float = 8.0
+    llm_retry_jitter_ratio: float = 0.25
+
+    # ---- 执行上限与锁 ----
+    # 四个值必须联动：hard > soft，visibility 与锁 TTL 都要大于 hard，否则会出现
+    # "锁失效后双执行"或"消息被 broker 提前重投"
+    parse_soft_time_limit_seconds: int = 900
+    parse_hard_time_limit_seconds: int = 960
+    extract_soft_time_limit_seconds: int = 3600
+    extract_hard_time_limit_seconds: int = 3900
+    parse_run_lock_ttl_seconds: int = 5400
+    extract_run_lock_ttl_seconds: int = 5400
+    celery_visibility_timeout_seconds: int = 5400
 
     # ---- Embedding ----
     # 与 LLM 分开配置：换向量模型不应牵动对话模型
@@ -144,6 +180,20 @@ class Settings(BaseSettings):
                 except json.JSONDecodeError:
                     pass
             return [item.strip() for item in text.split(",") if item.strip()]
+        return value
+
+    @field_validator("task_auto_retry_backoff_seconds", mode="before")
+    @classmethod
+    def _split_int_csv(cls, value: object) -> object:
+        """退避序列写成 "30,120,300" 或 [30,120,300] 都可以。"""
+        if isinstance(value, str):
+            text = value.strip()
+            if text.startswith("["):
+                try:
+                    return json.loads(text)
+                except json.JSONDecodeError:
+                    pass
+            return [int(item) for item in text.split(",") if item.strip()]
         return value
 
     @property

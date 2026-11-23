@@ -13,10 +13,13 @@ import type {
   DocumentVersion,
   EntityItem,
   ExtractionTask,
+  ExtractionTaskDetail,
   ParseBlock,
   ParseTask,
   ReviewFlow,
+  TaskActions,
 } from '@/api/types'
+import TaskAttemptTimeline from '@/components/TaskAttemptTimeline.vue'
 import { useAuthStore } from '@/stores/auth'
 import {
   DOCUMENT_STATUS,
@@ -25,8 +28,12 @@ import {
   SENSITIVITY,
   TASK_STATUS,
   classLabel,
+  errorText,
   formatFileSize,
   formatTime,
+  progressPercent,
+  retryStatus,
+  skipReasonLabel,
   statusMeta,
 } from '@/utils/format'
 
@@ -46,6 +53,13 @@ const blocksTaskId = ref<string>('')
 const blocksQuery = reactive({ page: 1, page_size: 20, total: 0 })
 const activeTab = ref('overview')
 const busy = ref('')
+
+const extractionDetailVisible = ref(false)
+const extractionDetailLoading = ref(false)
+const extractionDetail = ref<ExtractionTaskDetail | null>(null)
+/** 列表行拿不到 actions，按任务缓存一次，用于把按钮按剩余额度置灰 */
+const extractionActions = ref<Record<string, TaskActions>>({})
+const reextractId = ref('')
 
 const editVisible = ref(false)
 const editForm = reactive({ title: '', summary: '', sensitivity: 'internal', tags: '' })
@@ -93,8 +107,81 @@ async function loadTasks(): Promise<void> {
     parseApi.listTasks({ document_id: documentId, page: 1, page_size: 20 }),
     knowledgeApi.listExtractions({ document_id: documentId, page: 1, page_size: 20 }),
   ])
-  parseTasks.value = parsePage.items
-  extractions.value = extractionPage.items
+  parseTasks.value = syncTasks(parseTasks.value, parsePage.items)
+  extractions.value = syncTasks(extractions.value, extractionPage.items)
+  void loadActionBudgets()
+}
+
+/** 失败/取消的任务才有操作入口；补充一次额度信息，避免按钮点了才发现没额度。 */
+async function loadActionBudgets(): Promise<void> {
+  const missing = extractions.value.filter(
+    (task) =>
+      (task.status === 'failed' || task.status === 'cancelled') && !extractionActions.value[task.id],
+  )
+  if (!missing.length) return
+  const results = await Promise.allSettled(missing.map((task) => knowledgeApi.extraction(task.id)))
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      extractionActions.value[missing[index].id] = result.value.actions
+    }
+  })
+}
+
+function actionsOf(task: { id: string }): TaskActions | null {
+  return extractionActions.value[task.id] ?? null
+}
+
+function canRevive(task: ExtractionTask): boolean {
+  return actionsOf(task)?.can_revive ?? true
+}
+
+function canSkipBatches(task: ExtractionTask): boolean {
+  return actionsOf(task)?.can_skip_failed_batches ?? true
+}
+
+async function openExtractionDetail(task: ExtractionTask): Promise<void> {
+  extractionDetailVisible.value = true
+  extractionDetailLoading.value = true
+  extractionDetail.value = null
+  try {
+    const data = await knowledgeApi.extraction(task.id)
+    extractionDetail.value = data
+    extractionActions.value[data.id] = data.actions
+  } catch (error) {
+    ElMessage.error(errorMessage(error))
+  } finally {
+    extractionDetailLoading.value = false
+  }
+}
+
+async function refreshExtractionDetail(): Promise<void> {
+  const current = extractionDetail.value
+  if (!current) return
+  try {
+    const data = await knowledgeApi.extraction(current.id)
+    extractionDetail.value = data
+    extractionActions.value[data.id] = data.actions
+  } catch {
+    // 详情刷新失败不打断操作，列表轮询仍会更新状态
+  }
+}
+
+function syncTasks<T>(current: T[], next: T[]): T[] {
+  return JSON.stringify(current) === JSON.stringify(next) ? current : next
+}
+
+function patchParseTask(task: ParseTask): void {
+  const index = parseTasks.value.findIndex((item) => item.id === task.id)
+  if (index >= 0) parseTasks.value.splice(index, 1, task)
+  else parseTasks.value.unshift(task)
+}
+
+function patchExtractionTask(task: ExtractionTask): void {
+  const index = extractions.value.findIndex((item) => item.id === task.id)
+  if (index >= 0) extractions.value.splice(index, 1, task)
+  else extractions.value.unshift(task)
+  // 状态变了，额度可能也变了；下次列表刷新重新取一次，避免按钮用旧数据置灰
+  delete extractionActions.value[task.id]
 }
 
 async function loadEntities(): Promise<void> {
@@ -137,7 +224,7 @@ async function triggerParse(): Promise<void> {
   try {
     const task = await parseApi.trigger({ document_version_id: currentVersion.value.id })
     ElMessage.success(`已提交解析任务 ${task.id.slice(0, 8)}`)
-    await loadTasks()
+    patchParseTask(task)
   } catch (error) {
     ElMessage.error(errorMessage(error))
   } finally {
@@ -154,7 +241,7 @@ async function triggerExtraction(): Promise<void> {
   try {
     const task = await knowledgeApi.triggerExtraction({ parse_task_id: latestParse.value.id })
     ElMessage.success(`已提交抽取任务 ${task.id.slice(0, 8)}`)
-    await loadTasks()
+    patchExtractionTask(task)
   } catch (error) {
     ElMessage.error(errorMessage(error))
   } finally {
@@ -164,23 +251,81 @@ async function triggerExtraction(): Promise<void> {
 
 async function retryParse(task: ParseTask): Promise<void> {
   try {
-    await parseApi.retry(task.id)
+    const updated = await parseApi.retry(task.id)
     ElMessage.success('已重新提交')
-    await loadTasks()
+    patchParseTask(updated)
   } catch (error) {
     ElMessage.error(errorMessage(error))
   }
 }
 
-async function retryExtraction(task: ExtractionTask): Promise<void> {
+async function retryExtraction(task: ExtractionTask, degrade = false): Promise<void> {
   try {
-    await knowledgeApi.retryExtraction(task.id)
-    ElMessage.success('已重新提交')
-    await loadTasks()
+    const updated = await knowledgeApi.retryExtraction(task.id, degrade)
+    ElMessage.success(degrade ? '已降参并继续，排队中' : '已从断点继续，排队中')
+    patchExtractionTask(updated)
+    await refreshExtractionDetail()
   } catch (error) {
     ElMessage.error(errorMessage(error))
   }
 }
+
+async function skipFailedBatches(task: ExtractionTask): Promise<void> {
+  try {
+    const updated = await knowledgeApi.skipFailedBatches(task.id)
+    ElMessage.success('已跳过缺失批次继续，结果为部分完成')
+    patchExtractionTask(updated)
+    await refreshExtractionDetail()
+  } catch (error) {
+    ElMessage.error(errorMessage(error))
+  }
+}
+
+/** 重新抽取 = 以该任务冻结的解析结果再排一个新任务，不覆盖历史。 */
+async function reextract(task: ExtractionTask): Promise<void> {
+  reextractId.value = task.id
+  try {
+    const created = await knowledgeApi.triggerExtraction({ parse_task_id: task.parse_task_id })
+    ElMessage.success(`已提交新的抽取任务 ${created.id.slice(0, 8)}`)
+    patchExtractionTask(created)
+  } catch (error) {
+    ElMessage.error(errorMessage(error))
+  } finally {
+    reextractId.value = ''
+  }
+}
+
+const detailActions = computed<TaskActions>(
+  () =>
+    extractionDetail.value?.actions ?? {
+      can_revive: false,
+      can_skip_failed_batches: false,
+      revive_remaining: 0,
+      auto_retry_remaining: 0,
+    },
+)
+
+/** 失败原因优先用后端下发的 error，缺失时按错误码兜底，未知码也保留原始码。 */
+const detailError = computed(() => {
+  const task = extractionDetail.value
+  if (!task) return null
+  if (task.error) {
+    return { message: task.error.message, hint: task.error.hint ?? '', code: task.error.code }
+  }
+  if (task.error_code) {
+    const text = errorText(task.error_code)
+    return { message: text.message, hint: text.hint, code: text.code }
+  }
+  return null
+})
+
+const detailProgress = computed(() => extractionDetail.value?.progress ?? null)
+
+const unprocessedBatches = computed(() => {
+  const stats = extractionDetail.value?.stats
+  const value = stats?.unprocessed_batches
+  return typeof value === 'number' ? value : 0
+})
 
 async function download(): Promise<void> {
   if (!currentVersion.value) return
@@ -376,6 +521,7 @@ onUnmounted(() => {
         </el-button>
         <el-button
           v-if="auth.has('parse:run')"
+          class="toolbar-btn"
           type="primary"
           plain
           :loading="busy === 'parse'"
@@ -386,6 +532,7 @@ onUnmounted(() => {
         </el-button>
         <el-button
           v-if="auth.has('parse:run')"
+          class="toolbar-btn"
           type="primary"
           :loading="busy === 'extract'"
           :disabled="!latestParse"
@@ -445,7 +592,7 @@ onUnmounted(() => {
         </el-tab-pane>
 
         <el-tab-pane label="版本历史" name="versions">
-          <el-table :data="versions" size="small">
+          <el-table :data="versions" row-key="id" size="small">
             <el-table-column label="版本" width="80">
               <template #default="{ row }: { row: DocumentVersion }">v{{ row.version_no }}</template>
             </el-table-column>
@@ -477,15 +624,18 @@ onUnmounted(() => {
         </el-tab-pane>
 
         <el-tab-pane label="解析任务" name="parse">
-          <el-table :data="parseTasks" size="small">
+          <el-table :data="parseTasks" row-key="id" size="small">
             <el-table-column label="任务" width="110">
               <template #default="{ row }: { row: ParseTask }">
                 <span class="mono">{{ row.id.slice(0, 8) }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="状态" width="96">
+            <el-table-column label="状态" width="130">
               <template #default="{ row }: { row: ParseTask }">
-                <el-tag :type="statusMeta(TASK_STATUS, row.status).tone" size="small">
+                <el-tag v-if="retryStatus(row)" :type="retryStatus(row)?.tone" size="small">
+                  {{ retryStatus(row)?.label }}
+                </el-tag>
+                <el-tag v-else :type="statusMeta(TASK_STATUS, row.status).tone" size="small">
                   {{ statusMeta(TASK_STATUS, row.status).label }}
                 </el-tag>
               </template>
@@ -507,19 +657,26 @@ onUnmounted(() => {
                 </span>
               </template>
             </el-table-column>
-            <el-table-column label="错误" min-width="180">
+            <el-table-column label="失败原因" min-width="180">
               <template #default="{ row }: { row: ParseTask }">
-                <span v-if="row.error_message" class="danger-text small">{{ row.error_message }}</span>
+                <span v-if="row.error || row.error_message" class="danger-text small">
+                  {{ row.error?.message ?? row.error_message }}
+                </span>
                 <span v-else class="muted small">—</span>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="160" align="right">
+            <el-table-column label="操作" width="170" align="right">
               <template #default="{ row }: { row: ParseTask }">
                 <el-button link type="primary" @click="loadBlocks(row.id); activeTab = 'blocks'">
                   内容块
                 </el-button>
-                <el-button v-if="row.status === 'failed'" link type="warning" @click="retryParse(row)">
-                  重试
+                <el-button
+                  v-if="row.status === 'failed' || row.status === 'cancelled'"
+                  link
+                  type="warning"
+                  @click="retryParse(row)"
+                >
+                  继续执行
                 </el-button>
               </template>
             </el-table-column>
@@ -527,17 +684,41 @@ onUnmounted(() => {
         </el-tab-pane>
 
         <el-tab-pane label="抽取任务" name="extraction">
-          <el-table :data="extractions" size="small">
+          <el-table :data="extractions" row-key="id" size="small">
             <el-table-column label="任务" width="110">
               <template #default="{ row }: { row: ExtractionTask }">
                 <span class="mono">{{ row.id.slice(0, 8) }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="状态" width="96">
+            <el-table-column label="状态" width="130">
               <template #default="{ row }: { row: ExtractionTask }">
-                <el-tag :type="statusMeta(TASK_STATUS, row.status).tone" size="small">
-                  {{ statusMeta(TASK_STATUS, row.status).label }}
+                <el-tag v-if="retryStatus(row)" :type="retryStatus(row)?.tone" size="small">
+                  {{ retryStatus(row)?.label }}
                 </el-tag>
+                <template v-else>
+                  <el-tag :type="statusMeta(TASK_STATUS, row.status).tone" size="small">
+                    {{ statusMeta(TASK_STATUS, row.status).label }}
+                  </el-tag>
+                  <el-tag v-if="row.incomplete" size="small" type="warning" style="margin-left: 4px">
+                    不完整
+                  </el-tag>
+                </template>
+              </template>
+            </el-table-column>
+            <el-table-column label="进度" width="150">
+              <template #default="{ row }: { row: ExtractionTask }">
+                <el-progress
+                  :percentage="progressPercent(row.progress)"
+                  :stroke-width="6"
+                  :show-text="false"
+                />
+                <span class="muted small">
+                  {{ row.progress.batches_done }}/{{ row.progress.batches_total }} 批
+                  · {{ progressPercent(row.progress) }}%
+                  <template v-if="row.progress.batches_skipped">
+                    · 跳过 {{ row.progress.batches_skipped }}
+                  </template>
+                </span>
               </template>
             </el-table-column>
             <el-table-column label="本体版本" width="90">
@@ -555,24 +736,53 @@ onUnmounted(() => {
                 <span class="muted small">{{ formatTime(row.started_at) }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="错误" min-width="180">
+            <el-table-column label="失败原因" min-width="200">
               <template #default="{ row }: { row: ExtractionTask }">
-                <span v-if="row.error_message" class="danger-text small">{{ row.error_message }}</span>
+                <el-tooltip v-if="row.error || row.error_message" placement="top">
+                  <template #content>
+                    <div>{{ row.error?.message ?? '执行失败' }}</div>
+                    <div v-if="row.error?.hint" class="small">{{ row.error.hint }}</div>
+                    <div v-if="row.error_message" class="small">{{ row.error_message }}</div>
+                  </template>
+                  <span class="danger-text small ellipsis">
+                    {{ row.error?.message ?? row.error_message }}
+                  </span>
+                </el-tooltip>
                 <span v-else class="muted small">—</span>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="90" align="right">
+            <el-table-column label="操作" width="290" align="right">
               <template #default="{ row }: { row: ExtractionTask }">
-                <el-button v-if="row.status === 'failed'" link type="warning" @click="retryExtraction(row)">
-                  重试
-                </el-button>
+                <el-button link type="primary" @click="openExtractionDetail(row)">详情</el-button>
+                <template v-if="row.status === 'failed' || row.status === 'cancelled'">
+                  <el-button
+                    link
+                    type="warning"
+                    :disabled="!canRevive(row)"
+                    @click="retryExtraction(row)"
+                  >
+                    继续执行
+                  </el-button>
+                  <el-button
+                    v-if="row.status === 'failed'"
+                    link
+                    type="info"
+                    :disabled="!canSkipBatches(row)"
+                    @click="skipFailedBatches(row)"
+                  >
+                    跳过失败批次
+                  </el-button>
+                  <el-button link type="primary" :loading="reextractId === row.id" @click="reextract(row)">
+                    重新抽取
+                  </el-button>
+                </template>
               </template>
             </el-table-column>
           </el-table>
         </el-tab-pane>
 
         <el-tab-pane label="关联实体" name="entities">
-          <el-table :data="entities" size="small">
+          <el-table :data="entities" row-key="id" size="small">
             <el-table-column label="实体" min-width="180">
               <template #default="{ row }: { row: EntityItem }">
                 <div class="row">
@@ -724,6 +934,139 @@ onUnmounted(() => {
         <el-button type="primary" :loading="submittingReview" @click="submitReview">提交审批</el-button>
       </template>
     </el-dialog>
+
+    <el-drawer v-model="extractionDetailVisible" title="抽取任务详情" size="560px">
+      <div v-loading="extractionDetailLoading" class="drawer-body">
+        <template v-if="extractionDetail">
+          <el-descriptions :column="2" border size="small">
+            <el-descriptions-item label="任务">
+              <span class="mono">{{ extractionDetail.id.slice(0, 8) }}</span>
+            </el-descriptions-item>
+            <el-descriptions-item label="状态">
+              <el-tag
+                v-if="retryStatus(extractionDetail)"
+                :type="retryStatus(extractionDetail)?.tone"
+                size="small"
+              >
+                {{ retryStatus(extractionDetail)?.label }}
+              </el-tag>
+              <el-tag
+                v-else
+                :type="statusMeta(TASK_STATUS, extractionDetail.status).tone"
+                size="small"
+              >
+                {{ statusMeta(TASK_STATUS, extractionDetail.status).label }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="执行序号">{{ extractionDetail.attempt }}</el-descriptions-item>
+            <el-descriptions-item label="本体版本">v{{ extractionDetail.ontology_version }}</el-descriptions-item>
+            <el-descriptions-item label="开始时间">{{ formatTime(extractionDetail.started_at) }}</el-descriptions-item>
+            <el-descriptions-item label="结束时间">{{ formatTime(extractionDetail.finished_at) }}</el-descriptions-item>
+          </el-descriptions>
+
+          <div class="progress-block">
+            <el-progress :percentage="progressPercent(detailProgress)" :stroke-width="10" />
+            <div class="muted small">
+              已完成 {{ extractionDetail.progress.batches_done }}/{{
+                extractionDetail.progress.batches_total
+              }}
+              批
+              <template v-if="extractionDetail.progress.batches_skipped">
+                · 跳过 {{ extractionDetail.progress.batches_skipped }} 批
+              </template>
+              <template v-if="extractionDetail.progress.current_batch !== null">
+                · 当前第 {{ extractionDetail.progress.current_batch + 1 }} 批
+              </template>
+            </div>
+          </div>
+
+          <div class="budget-row">
+            <el-tag size="small" effect="plain">自动重试剩余 {{ detailActions.auto_retry_remaining }}</el-tag>
+            <el-tag size="small" effect="plain">人工继续剩余 {{ detailActions.revive_remaining }}</el-tag>
+          </div>
+
+          <el-alert
+            v-if="detailError"
+            type="error"
+            :closable="false"
+            show-icon
+            :title="detailError.message"
+          >
+            <div v-if="detailError.hint" class="small">{{ detailError.hint }}</div>
+            <div v-if="detailError.code" class="mono small">错误码：{{ detailError.code }}</div>
+          </el-alert>
+
+          <el-alert
+            v-if="extractionDetail.incomplete"
+            type="warning"
+            :closable="false"
+            show-icon
+            title="结果不完整：有批次被跳过"
+            :description="`未处理 ${unprocessedBatches} 批，可在下方查看跳过原因。`"
+          />
+
+          <div class="action-row">
+            <el-button
+              size="small"
+              type="warning"
+              plain
+              :disabled="!detailActions.can_revive"
+              @click="retryExtraction(extractionDetail)"
+            >
+              继续执行
+            </el-button>
+            <el-button
+              size="small"
+              type="warning"
+              plain
+              :disabled="!detailActions.can_revive"
+              @click="retryExtraction(extractionDetail, true)"
+            >
+              降参继续
+            </el-button>
+            <el-button
+              size="small"
+              type="info"
+              plain
+              :disabled="!detailActions.can_skip_failed_batches"
+              @click="skipFailedBatches(extractionDetail)"
+            >
+              跳过失败批次继续
+            </el-button>
+            <el-button size="small" type="primary" plain @click="reextract(extractionDetail)">
+              重新抽取
+            </el-button>
+          </div>
+          <div v-if="!detailActions.can_revive" class="muted small">
+            人工继续额度已用尽；如需重跑请修改输入后重新触发。
+          </div>
+
+          <section class="drawer-section">
+            <h3 class="section-title">执行历史</h3>
+            <TaskAttemptTimeline :attempts="extractionDetail.attempts" />
+          </section>
+
+          <section v-if="extractionDetail.skip_summary.length" class="drawer-section">
+            <h3 class="section-title">跳过原因</h3>
+            <div class="skip-row">
+              <el-tag
+                v-for="item in extractionDetail.skip_summary"
+                :key="item.reason"
+                size="small"
+                effect="plain"
+              >
+                {{ skipReasonLabel(item.reason) }} {{ item.count }}
+              </el-tag>
+            </div>
+          </section>
+        </template>
+        <el-empty
+          v-else-if="!extractionDetailLoading"
+          description="没有拿到任务详情"
+          :image-size="70"
+        />
+      </div>
+    </el-drawer>
   </div>
 </template>
 
@@ -738,6 +1081,10 @@ onUnmounted(() => {
 
 .danger-text {
   color: #d92d20;
+}
+
+.toolbar-btn {
+  min-width: 108px;
 }
 
 .warn {
@@ -774,6 +1121,41 @@ onUnmounted(() => {
   font-family: monospace;
   font-size: 11px;
   color: var(--muted);
+}
+
+.drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 120px;
+}
+
+.progress-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.budget-row,
+.skip-row,
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.drawer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
 }
 
 .block-content {

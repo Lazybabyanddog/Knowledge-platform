@@ -5,7 +5,12 @@ Alembic 通过导入本包来发现全部表，新增模型必须在此登记。
 
 from app.infra.db.models.audit_log import AuditLog
 from app.infra.db.models.document import Document, DocumentAcl, DocumentVersion
-from app.infra.db.models.extraction_task import ExtractionTask
+from app.infra.db.models.extraction_backfill import ExtractionBackfillBatch
+from app.infra.db.models.extraction_task import (
+    ExtractionBatchCheckpoint,
+    ExtractionTask,
+    ExtractionTaskAttempt,
+)
 from app.infra.db.models.ontology import OntologyClass, OntologyRelation
 from app.infra.db.models.parse_strategy import ParseStrategy
 from app.infra.db.models.parse_task import ParseBlock, ParseTask, ParseTaskAttempt
@@ -23,7 +28,10 @@ __all__ = [
     "DocumentAcl",
     "DocumentChunk",
     "DocumentVersion",
+    "ExtractionBackfillBatch",
+    "ExtractionBatchCheckpoint",
     "ExtractionTask",
+    "ExtractionTaskAttempt",
     "OntologyClass",
     "OntologyRelation",
     "ParseBlock",

@@ -118,6 +118,29 @@ class ServiceUnavailableError(AppError):
     code = ErrorCode.UNAVAILABLE
 
 
+class TaskFatalError(AppError):
+    """任务级失败的基类：``task_error_code`` 会被服务层落进执行记录。
+
+    和普通业务异常的区别只在于"附带一个可展示的错误码"，HTTP 语义仍由 ``code`` 决定。
+    """
+
+    task_error_code: str = "internal_error"
+
+
+class BadInputError(TaskFatalError):
+    """输入不可处理（文件损坏、内容块为空）：重试与降参都无意义。"""
+
+    code = ErrorCode.BAD_REQUEST
+    task_error_code = "bad_input"
+
+
+class OntologyMissingError(TaskFatalError):
+    """触发时冻结的本体实体类已失效：重试无用，只能重新触发。"""
+
+    code = ErrorCode.BAD_REQUEST
+    task_error_code = "ontology_missing"
+
+
 # --------------------------------------------------------------------------- #
 # 全局异常处理器
 # --------------------------------------------------------------------------- #
@@ -162,9 +185,16 @@ def register_exception_handlers(app: Any) -> None:
             }
             for err in exc.errors()
         ]
-        return _error_response(
-            ErrorCode.BAD_REQUEST, DEFAULT_MESSAGE[ErrorCode.BAD_REQUEST], details
-        )
+        # 模型校验器抛出的业务提示（如"标识键 xxx 重复"）比"参数校验失败"有用得多，
+        # 直接放进 message 让调用方与界面能定位问题；类型错误仍用统一文案。
+        message = DEFAULT_MESSAGE[ErrorCode.BAD_REQUEST]
+        for err in exc.errors():
+            if err.get("type") == "value_error":
+                text = str(err.get("msg", "")).removeprefix("Value error, ").strip()
+                if text:
+                    message = text
+                break
+        return _error_response(ErrorCode.BAD_REQUEST, message, details)
 
     @app.exception_handler(StarletteHTTPException)
     async def _handle_http(_: Any, exc: StarletteHTTPException) -> JSONResponse:

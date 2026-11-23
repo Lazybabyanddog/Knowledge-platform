@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 
 from app.infra.db.session import SessionLocal
 from app.workers.celery_app import celery_app
+
+logger = logging.getLogger(__name__)
 
 
 @celery_app.task(name="parse.document", bind=True, max_retries=0)
@@ -47,6 +50,20 @@ def run_index_version(self, version_id: str) -> None:  # noqa: ANN001 - Celery �
         db.rollback()
         mark_index_failed(db, uuid.UUID(version_id), f"索引任务异常: {exc}")
         raise
+    finally:
+        db.close()
+
+
+@celery_app.task(name="watchdog.sweep", bind=True, max_retries=0)
+def sweep_stale_tasks(self) -> None:  # noqa: ANN001 - Celery 注入 self
+    """看护定时入口：只做状态收尾与重投，不承担任何业务处理。"""
+    from app.services.task_watchdog import sweep_stale_tasks as sweep
+
+    db = SessionLocal()
+    try:
+        result = sweep(db)
+        if result["parse"] or result["extraction"]:
+            logger.warning("看护重排 parse=%s extraction=%s", result["parse"], result["extraction"])
     finally:
         db.close()
 

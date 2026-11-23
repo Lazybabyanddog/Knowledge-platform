@@ -21,6 +21,9 @@ class ReviewRepository:
         self.db.add(flow)
         return flow
 
+    def delete_flow(self, flow: ReviewFlow) -> None:
+        self.db.delete(flow)
+
     def get_flow(
         self, flow_id: uuid.UUID, *, workspace_id: uuid.UUID | None = None
     ) -> ReviewFlow | None:

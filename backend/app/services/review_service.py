@@ -263,6 +263,42 @@ class ReviewService:
             raise NotFoundError("审批流不存在")
         return flow_item(flow)
 
+    def delete_flow(
+        self,
+        principal: Principal,
+        flow_id: uuid.UUID,
+        *,
+        ip: str | None = None,
+    ) -> None:
+        """物理删除审批流。
+
+        审批实例保存了 flow_snapshot 与 flow_name 快照，删除流程后历史实例仍可回看；
+        实例上的 flow_id 依赖外键 SET NULL 置空，不会影响进行中的审批。
+        """
+        flow = self.reviews.get_flow(flow_id, workspace_id=principal.user.workspace_id)
+        if flow is None:
+            raise NotFoundError("审批流不存在")
+
+        snapshot = {
+            "name": flow.name,
+            "doc_type": flow.doc_type,
+            "is_default": flow.is_default,
+            "status": flow.status,
+            "steps": flow.steps,
+        }
+        self.audit.record(
+            AuditAction.REVIEW_FLOW_DELETE,
+            actor_id=principal.user_id,
+            actor_name=principal.user.username,
+            workspace_id=flow.workspace_id,
+            object_type="review_flow",
+            object_id=flow.id,
+            before=snapshot,
+            ip=ip,
+        )
+        self.reviews.delete_flow(flow)
+        self.db.commit()
+
     # ------------------------------------------------------------------ #
     # 提交审批
     # ------------------------------------------------------------------ #

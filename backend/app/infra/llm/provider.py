@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import random
 import re
 import time
 from collections.abc import AsyncIterator, Iterator
@@ -26,6 +27,22 @@ _EMBED_MAX_ATTEMPTS = 3
 
 class LLMError(RuntimeError):
     """模型调用或返回解析失败，可由上层决定修复或跳过。"""
+
+
+class LLMTransientError(LLMError):
+    """瞬时故障（超时 / 429 / 5xx / 连接重置）：值得重试，不该被降级成"跳过该批"。"""
+
+    task_error_code = "llm_unavailable"
+
+    def __init__(self, message: str, *, error_code: str = "llm_unavailable") -> None:
+        super().__init__(message)
+        self.task_error_code = error_code
+
+
+class LLMPermanentError(LLMError):
+    """凭据无效、请求被拒：重试只会浪费预算，直接失败并提示改配置。"""
+
+    task_error_code = "llm_rejected"
 
 
 class EmbeddingError(RuntimeError):
@@ -56,9 +73,13 @@ def _endpoint() -> str:
 
 
 def chat_json(system: str, user: str) -> dict[str, Any]:
-    """要求模型输出 JSON 对象；自动剥掉 ```json 围栏与前后解释文字。"""
+    """要求模型输出 JSON 对象；自动剥掉 ```json 围栏与前后解释文字。
+
+    进程内只重试"抖动"：超时、429、5xx、连接重置。凭据类错误立刻抛永久错误，
+    输出不是合法 JSON 仍然抛 ``LLMError`` —— 那是内容问题，由上层 repair 处理。
+    """
     if not is_llm_configured():
-        raise LLMError("未配置 LLM（llm_api_key / llm_base_url 为空）")
+        raise LLMPermanentError("未配置 LLM（llm_api_key / llm_base_url 为空）")
 
     payload = {
         "model": settings.llm_model,
@@ -73,19 +94,50 @@ def chat_json(system: str, user: str) -> dict[str, Any]:
         "Authorization": f"Bearer {settings.llm_api_key}",
         "Content-Type": "application/json",
     }
-    try:
-        response = httpx.post(
-            _endpoint(),
-            json=payload,
-            headers=headers,
-            timeout=settings.llm_timeout_seconds,
-        )
-        response.raise_for_status()
-        content = response.json()["choices"][0]["message"]["content"]
-    except (httpx.HTTPError, KeyError, IndexError, ValueError) as exc:
-        raise LLMError(f"模型调用失败: {exc}") from exc
+    return parse_json_object(_post_chat(payload, headers))
 
-    return parse_json_object(content)
+
+def _post_chat(payload: dict[str, Any], headers: dict[str, str]) -> str:
+    attempts = max(1, settings.llm_max_attempts)
+    last_error: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            response = httpx.post(
+                _endpoint(),
+                json=payload,
+                headers=headers,
+                timeout=settings.llm_timeout_seconds,
+            )
+            response.raise_for_status()
+            return response.json()["choices"][0]["message"]["content"]
+        except httpx.HTTPStatusError as exc:
+            status = exc.response.status_code
+            if status != 429 and status < 500:
+                raise LLMPermanentError(f"模型拒绝请求（HTTP {status}）") from exc
+            last_error = exc
+        except httpx.TimeoutException as exc:
+            last_error = exc
+        except httpx.TransportError as exc:
+            last_error = exc
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
+            raise LLMError(f"模型返回结构异常: {exc}") from exc
+        if attempt < attempts - 1:
+            time.sleep(_retry_delay(attempt))
+
+    if isinstance(last_error, httpx.TimeoutException):
+        raise LLMTransientError(
+            f"模型调用超时: {last_error}", error_code="llm_timeout"
+        ) from last_error
+    raise LLMTransientError(f"模型服务不可用: {last_error}") from last_error
+
+
+def _retry_delay(attempt: int) -> float:
+    raw = min(
+        settings.llm_retry_max_delay_seconds,
+        settings.llm_retry_base_delay_seconds * (2**attempt),
+    )
+    jitter = raw * settings.llm_retry_jitter_ratio
+    return max(0.0, raw + random.uniform(-jitter, jitter))
 
 
 async def astream_chat(messages: list[dict[str, str]]) -> AsyncIterator[str]:
@@ -217,6 +269,8 @@ __all__ = [
     "EmbeddingDimensionError",
     "EmbeddingError",
     "LLMError",
+    "LLMPermanentError",
+    "LLMTransientError",
     "astream_chat",
     "chat_json",
     "embed_texts",

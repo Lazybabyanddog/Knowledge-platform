@@ -134,11 +134,42 @@ export interface ParseAttempt {
   id: string
   attempt_no: number
   status: string
+  /** 这次执行是谁排的：manual / auto_retry / manual_revive / skip_batches / watchdog */
+  source: string | null
   quality_score: number | null
+  stats: Record<string, unknown>
   error_code: string | null
   error_message: string | null
+  error_detail: Record<string, unknown> | null
+  duration_ms: number | null
   started_at: string | null
   finished_at: string | null
+}
+
+export interface TaskErrorInfo {
+  code: string
+  message: string
+  hint: string | null
+  retryable: boolean
+}
+
+export interface TaskActions {
+  can_revive: boolean
+  can_skip_failed_batches: boolean
+  revive_remaining: number
+  auto_retry_remaining: number
+}
+
+export interface TaskProgress {
+  batches_total: number
+  batches_done: number
+  batches_skipped: number
+  current_batch: number | null
+}
+
+export interface TaskSkipReason {
+  reason: string
+  count: number
 }
 
 export interface ParseTask {
@@ -153,6 +184,13 @@ export interface ParseTask {
   stats: Record<string, unknown>
   error_code: string | null
   error_message: string | null
+  /** 对外可读的失败原因（code + 文案 + 建议） */
+  error: TaskErrorInfo | null
+  auto_retries: number
+  downgrade_retries: number
+  manual_revives: number
+  /** 下一次执行由谁排的：pending 时据此区分「系统重试中」与「人工触发」 */
+  next_source: string | null
   started_at: string | null
   finished_at: string | null
   created_at: string
@@ -162,6 +200,7 @@ export interface ParseTask {
 export interface ParseTaskDetail extends ParseTask {
   warnings: string[]
   attempts: ParseAttempt[]
+  actions: TaskActions
 }
 
 export interface ParseBlock {
@@ -179,15 +218,33 @@ export interface ParseBlock {
 
 /* --------------------------------- 本体 --------------------------------- */
 
+export type AttributeType = 'string' | 'number' | 'date' | 'boolean' | 'enum' | 'array'
+
+/** 与后端 AttributeDef 一一对应：抽取与人工修正都按这份契约校验。 */
+export interface AttributeDef {
+  code: string
+  name: string
+  type: AttributeType
+  description: string
+  hint: string | null
+  examples: string[]
+  required: boolean
+  enum_values: string[] | null
+  items_type: AttributeType | null
+}
+
 export interface OntologyClass {
   id: string
   code: string
   name: string
   description: string | null
   parent_id: string | null
-  attributes: Record<string, unknown>
+  attributes: Record<string, AttributeDef>
+  /** 标识属性编码：取到值即按"标识身份"跨文档对齐 */
+  identity_keys: string[]
   version: number
-  status: string
+  /** 0 有效、1 失效 */
+  status: 0 | 1
   created_at: string
   updated_at: string
 }
@@ -201,8 +258,10 @@ export interface OntologyRelation {
   target_class_id: string
   source_class_code: string
   target_class_code: string
+  attributes: Record<string, AttributeDef>
   version: number
-  status: string
+  /** 0 有效、1 失效 */
+  status: 0 | 1
   created_at: string
   updated_at: string
 }
@@ -224,9 +283,38 @@ export interface ExtractionTask {
   stats: Record<string, unknown>
   error_code: string | null
   error_message: string | null
+  error: TaskErrorInfo | null
+  auto_retries: number
+  downgrade_retries: number
+  manual_revives: number
+  /** 下一次执行由谁排的：pending 时据此区分「系统重试中」与「人工触发」 */
+  next_source: string | null
+  /** 有批次被跳过：成功也是"部分完成" */
+  incomplete: boolean
+  progress: TaskProgress
   started_at: string | null
   finished_at: string | null
   created_at: string
+}
+
+export interface ExtractionAttempt {
+  id: string
+  attempt_no: number
+  status: string
+  source: string | null
+  stats: Record<string, unknown>
+  error_code: string | null
+  error_message: string | null
+  error_detail: Record<string, unknown> | null
+  duration_ms: number | null
+  started_at: string | null
+  finished_at: string | null
+}
+
+export interface ExtractionTaskDetail extends ExtractionTask {
+  attempts: ExtractionAttempt[]
+  actions: TaskActions
+  skip_summary: TaskSkipReason[]
 }
 
 export interface EntityItem {
@@ -244,6 +332,9 @@ export interface EntityItem {
   document_ids: string[]
   evidence_block_ids: string[]
   attributes: Record<string, unknown>
+  /** name = 归一名称身份，identity = 标识属性身份 */
+  identity_kind: string | null
+  identity_key: string | null
   created_at: string | null
   updated_at: string | null
 }
@@ -256,6 +347,10 @@ export interface RelationItem {
   confidence: number
   status: RelationStatus
   evidence_block_id: string | null
+  evidence_text: string | null
+  evidence_key: string | null
+  attributes: Record<string, unknown>
+  description: string | null
   document_id: string | null
   extraction_task_id: string | null
   reject_reason: string | null

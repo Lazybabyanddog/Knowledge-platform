@@ -21,15 +21,20 @@ from app.schemas.knowledge import (
     EntityRejectRequest,
     EntitySourceResponse,
     EntityUpdateRequest,
+    ExtractionRetryRequest,
     ExtractionTaskCreateRequest,
+    ExtractionTaskDetail,
     ExtractionTaskItem,
     ExtractionTaskListResponse,
     ExtractionTaskQuery,
     RelationItem,
     RelationListResponse,
     RelationQuery,
+    RelationUpdateRequest,
     SubgraphResponse,
 )
+from app.schemas.backfill import BackfillBatchItem, BackfillRequest
+from app.services.backfill_service import BackfillService
 from app.services.extraction_service import (
     ExtractionService,
     extraction_task_item,
@@ -74,25 +79,83 @@ def list_extraction_tasks(
     return ExtractionService(db).list_tasks(principal, query)
 
 
+@extraction_router.post(
+    "/backfill", response_model=BackfillBatchItem, summary="存量重抽（运维）"
+)
+def run_backfill(
+    payload: BackfillRequest,
+    request: Request,
+    principal: ExtractPrincipal,
+    db: DbSession,
+) -> BackfillBatchItem:
+    """同步执行：一批跑完才返回，报告里带跳过/失败与无法沿用的人工结论。"""
+    return BackfillService(db).run(principal, payload)
+
+
 @extraction_router.get(
-    "/{task_id}", response_model=ExtractionTaskItem, summary="抽取任务详情"
+    "/backfill", response_model=list[BackfillBatchItem], summary="重抽批次列表"
+)
+def list_backfill_batches(
+    principal: ExtractPrincipal,
+    db: DbSession,
+    limit: int = Query(default=20, ge=1, le=100),
+) -> list[BackfillBatchItem]:
+    return BackfillService(db).list_batches(principal, limit=limit)
+
+
+@extraction_router.get(
+    "/backfill/{batch_id}", response_model=BackfillBatchItem, summary="重抽批次报告"
+)
+def get_backfill_batch(
+    batch_id: str, principal: ExtractPrincipal, db: DbSession
+) -> BackfillBatchItem:
+    return BackfillService(db).get(principal, batch_id)
+
+
+@extraction_router.get(
+    "/{task_id}", response_model=ExtractionTaskDetail, summary="抽取任务详情"
 )
 def get_extraction_task(
     task_id: uuid.UUID, principal: ReadPrincipal, db: DbSession
-) -> ExtractionTaskItem:
+) -> ExtractionTaskDetail:
     return ExtractionService(db).get_detail(principal, task_id)
 
 
 @extraction_router.post(
-    "/{task_id}/retry", response_model=ExtractionTaskItem, summary="重试抽取"
+    "/{task_id}/retry", response_model=ExtractionTaskItem, summary="继续执行抽取"
 )
 def retry_extraction(
     task_id: uuid.UUID,
     request: Request,
     principal: ExtractPrincipal,
     db: DbSession,
+    payload: ExtractionRetryRequest | None = None,
 ) -> ExtractionTaskItem:
-    task = ExtractionService(db).retry(principal, task_id, ip=client_ip(request))
+    """从断点继续：默认沿用原批大小，``degrade`` 时同时降参。"""
+    task = ExtractionService(db).retry(
+        principal,
+        task_id,
+        degrade=bool(payload and payload.degrade),
+        ip=client_ip(request),
+    )
+    return extraction_task_item(task)
+
+
+@extraction_router.post(
+    "/{task_id}/skip-failed-batches",
+    response_model=ExtractionTaskItem,
+    summary="跳过失败批次继续",
+)
+def skip_failed_batches(
+    task_id: uuid.UUID,
+    request: Request,
+    principal: ExtractPrincipal,
+    db: DbSession,
+) -> ExtractionTaskItem:
+    """把仍缺的批次标记为跳过并续跑，结果是"部分完成"，页面据此标注不完整。"""
+    task = ExtractionService(db).skip_failed_batches(
+        principal, task_id, ip=client_ip(request)
+    )
     return extraction_task_item(task)
 
 
@@ -215,6 +278,21 @@ def get_relation(
     relation_id: str, principal: ReadPrincipal, db: DbSession
 ) -> RelationItem:
     return KnowledgeService(db).get_relation(principal, relation_id)
+
+
+@relations_router.patch(
+    "/{relation_id}", response_model=RelationItem, summary="修改关系属性/描述"
+)
+def update_relation(
+    relation_id: str,
+    payload: RelationUpdateRequest,
+    request: Request,
+    principal: ReviewPrincipal,
+    db: DbSession,
+) -> RelationItem:
+    return KnowledgeService(db).update_relation(
+        principal, relation_id, payload, ip=client_ip(request)
+    )
 
 
 @relations_router.post(

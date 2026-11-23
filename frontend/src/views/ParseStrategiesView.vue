@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 import { errorMessage } from '@/api/http'
 import { parseApi } from '@/api/parse'
@@ -101,6 +101,26 @@ async function save(): Promise<void> {
   }
 }
 
+async function remove(strategy: ParseStrategy): Promise<void> {
+  try {
+    await ElMessageBox.confirm(
+      `确定删除策略「${strategy.name}」吗？该策略的全部版本都会停用并从列表移除，历史任务仍保留执行时的策略快照。` +
+        (strategy.is_default ? ' 它是当前默认策略，删除后需重新为该文档类型指定默认策略。' : ''),
+      '删除解析策略',
+      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' },
+    )
+  } catch {
+    return
+  }
+  try {
+    const result = await parseApi.deleteStrategy(strategy.id)
+    ElMessage.success(`已删除，停用了 ${result.disabled_versions} 个版本`)
+    await load()
+  } catch (error) {
+    ElMessage.error(errorMessage(error))
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -151,9 +171,10 @@ onMounted(load)
             <span class="muted small">{{ formatTime(row.created_at) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="90" align="right">
+        <el-table-column label="操作" width="130" align="right">
           <template #default="{ row }: { row: ParseStrategy }">
             <el-button v-if="auth.isAdmin" link type="primary" @click="openEdit(row)">修改</el-button>
+            <el-button v-if="auth.isAdmin" link type="danger" @click="remove(row)">删除</el-button>
           </template>
         </el-table-column>
         <template #empty>

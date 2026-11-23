@@ -3,6 +3,7 @@ import type {
   EntityItem,
   EntitySource,
   ExtractionTask,
+  ExtractionTaskDetail,
   MergeResult,
   Page,
   RelationItem,
@@ -14,8 +15,12 @@ export const knowledgeApi = {
     http.post<ExtractionTask>('/extraction-tasks', body),
   listExtractions: (params: Record<string, unknown>) =>
     http.get<Page<ExtractionTask>>('/extraction-tasks', params),
-  extraction: (id: string) => http.get<ExtractionTask>(`/extraction-tasks/${id}`),
-  retryExtraction: (id: string) => http.post<ExtractionTask>(`/extraction-tasks/${id}/retry`),
+  extraction: (id: string) => http.get<ExtractionTaskDetail>(`/extraction-tasks/${id}`),
+  /** 从断点继续；degrade 为真时同时把批大小减半（占用降参预算） */
+  retryExtraction: (id: string, degrade = false) =>
+    http.post<ExtractionTask>(`/extraction-tasks/${id}/retry`, { degrade }),
+  skipFailedBatches: (id: string) =>
+    http.post<ExtractionTask>(`/extraction-tasks/${id}/skip-failed-batches`),
   cancelExtraction: (id: string) => http.post<ExtractionTask>(`/extraction-tasks/${id}/cancel`),
 
   entities: (params: Record<string, unknown>) => http.get<Page<EntityItem>>('/entities', params),
@@ -37,6 +42,9 @@ export const knowledgeApi = {
   confirmRelation: (id: string) => http.post<RelationItem>(`/relations/${id}/confirm`),
   rejectRelation: (id: string, reason: string) =>
     http.post<RelationItem>(`/relations/${id}/reject`, { reason }),
+  /** 只允许改属性与描述：端点与类型是原文事实，不可篡改 */
+  updateRelation: (id: string, body: { attributes?: Record<string, unknown>; description?: string | null }) =>
+    http.patch<RelationItem>(`/relations/${id}`, body),
 
   subgraph: (entityId: string, params: { depth: number; include_proposed: boolean }) =>
     http.get<Subgraph>(`/graph/entities/${entityId}/subgraph`, params),

@@ -106,6 +106,19 @@ class ParseStrategyRepository:
         self.db.add(strategy)
         return strategy
 
+    def list_by_key(self, workspace_id: uuid.UUID, strategy_key: str) -> list[ParseStrategy]:
+        """同一 strategy_key 的全部版本（含历史版本）。"""
+        return list(
+            self.db.scalars(
+                select(ParseStrategy)
+                .where(
+                    ParseStrategy.workspace_id == workspace_id,
+                    ParseStrategy.strategy_key == strategy_key,
+                )
+                .order_by(ParseStrategy.version)
+            )
+        )
+
 
 class ParseTaskRepository:
     def __init__(self, db: Session) -> None:
@@ -175,6 +188,40 @@ class ParseTaskRepository:
     def add_attempt(self, attempt: ParseTaskAttempt) -> ParseTaskAttempt:
         self.db.add(attempt)
         return attempt
+
+    def latest_attempt(self, task_id: uuid.UUID) -> ParseTaskAttempt | None:
+        return self.db.scalar(
+            select(ParseTaskAttempt)
+            .where(ParseTaskAttempt.parse_task_id == task_id)
+            .order_by(ParseTaskAttempt.attempt_no.desc())
+            .limit(1)
+        )
+
+    def count_succeeded_for_version(
+        self, document_version_id: uuid.UUID, *, exclude_task_id: uuid.UUID | None = None
+    ) -> int:
+        conditions = [
+            ParseTask.document_version_id == document_version_id,
+            ParseTask.status == ParseTaskStatus.SUCCEEDED.value,
+        ]
+        if exclude_task_id is not None:
+            conditions.append(ParseTask.id != exclude_task_id)
+        return int(
+            self.db.scalar(select(func.count()).select_from(ParseTask).where(*conditions)) or 0
+        )
+
+    def delete_attempts(self, task_id: uuid.UUID) -> None:
+        self.db.execute(
+            delete(ParseTaskAttempt).where(ParseTaskAttempt.parse_task_id == task_id)
+        )
+
+    def list_running(self) -> list[ParseTask]:
+        """看护扫描的候选集：只有 RUNNING 才需要判活。"""
+        return list(
+            self.db.scalars(
+                select(ParseTask).where(ParseTask.status == ParseTaskStatus.RUNNING.value)
+            )
+        )
 
 
 class ParseBlockRepository:

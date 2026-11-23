@@ -35,3 +35,6 @@ uploads/
 .codebuddy/
 .pi/
 .playwright-cli/
+
+# 本地数据库文档（建库建表脚本不入库）
+docs/db/

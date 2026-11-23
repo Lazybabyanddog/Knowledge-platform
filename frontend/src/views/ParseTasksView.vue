@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 import { documentApi } from '@/api/documents'
 import { errorMessage } from '@/api/http'
 import { parseApi } from '@/api/parse'
 import type { ParseBlock, ParseTask, ParseTaskDetail } from '@/api/types'
-import { TASK_STATUS, formatTime, statusMeta } from '@/utils/format'
+import TaskAttemptTimeline from '@/components/TaskAttemptTimeline.vue'
+import { TASK_STATUS, formatTime, retryStatus, statusMeta } from '@/utils/format'
 
 const router = useRouter()
 
@@ -78,8 +79,11 @@ async function openDetail(task: ParseTask): Promise<void> {
 async function retry(task: ParseTask): Promise<void> {
   try {
     await parseApi.retry(task.id)
-    ElMessage.success('已重新提交')
+    ElMessage.success('已从断点继续，排队中')
     await load()
+    if (detailVisible.value && detail.value?.id === task.id) {
+      detail.value = await parseApi.taskDetail(task.id)
+    }
   } catch (error) {
     ElMessage.error(errorMessage(error))
   }
@@ -89,6 +93,32 @@ async function cancel(task: ParseTask): Promise<void> {
   try {
     await parseApi.cancel(task.id)
     ElMessage.success('已取消')
+    await load()
+  } catch (error) {
+    ElMessage.error(errorMessage(error))
+  }
+}
+
+async function remove(task: ParseTask): Promise<void> {
+  const hint =
+    task.status === 'succeeded'
+      ? '解析产物、执行历史以及由此产生的索引片段都会被删除，且不可恢复。'
+      : '执行历史与产物会被一并删除，且不可恢复。'
+  try {
+    await ElMessageBox.confirm(
+      `确定删除任务 ${task.id.slice(0, 8)} 吗？${hint}`,
+      '删除解析任务',
+      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' },
+    )
+  } catch {
+    return
+  }
+  try {
+    await parseApi.deleteTask(task.id)
+    ElMessage.success('已删除')
+    if (detailVisible.value && detail.value?.id === task.id) {
+      detailVisible.value = false
+    }
     await load()
   } catch (error) {
     ElMessage.error(errorMessage(error))
@@ -130,9 +160,12 @@ onMounted(load)
           </template>
         </el-table-column>
 
-        <el-table-column label="状态" width="100">
+        <el-table-column label="状态" width="130">
           <template #default="{ row }: { row: ParseTask }">
-            <el-tag :type="statusMeta(TASK_STATUS, row.status).tone" size="small">
+            <el-tag v-if="retryStatus(row)" :type="retryStatus(row)?.tone" size="small">
+              {{ retryStatus(row)?.label }}
+            </el-tag>
+            <el-tag v-else :type="statusMeta(TASK_STATUS, row.status).tone" size="small">
               {{ statusMeta(TASK_STATUS, row.status).label }}
             </el-tag>
           </template>
@@ -156,19 +189,33 @@ onMounted(load)
           </template>
         </el-table-column>
 
-        <el-table-column label="错误" min-width="180">
+        <el-table-column label="失败原因" min-width="200">
           <template #default="{ row }: { row: ParseTask }">
-            <el-tooltip v-if="row.error_message" :content="row.error_message" placement="top">
-              <span class="danger-text small ellipsis">{{ row.error_message }}</span>
+            <el-tooltip v-if="row.error || row.error_message" placement="top">
+              <template #content>
+                <div>{{ row.error?.message ?? '执行失败' }}</div>
+                <div v-if="row.error?.hint" class="muted small">{{ row.error.hint }}</div>
+                <div v-if="row.error_message" class="small">{{ row.error_message }}</div>
+              </template>
+              <span class="danger-text small ellipsis">
+                {{ row.error?.message ?? row.error_message }}
+              </span>
             </el-tooltip>
             <span v-else class="muted small">—</span>
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="170" align="right">
+        <el-table-column label="操作" width="240" align="right">
           <template #default="{ row }: { row: ParseTask }">
             <el-button link type="primary" @click="openDetail(row)">产物</el-button>
-            <el-button v-if="row.status === 'failed'" link type="warning" @click="retry(row)">重试</el-button>
+            <el-button
+              v-if="row.status === 'failed' || row.status === 'cancelled'"
+              link
+              type="warning"
+              @click="retry(row)"
+            >
+              继续执行
+            </el-button>
             <el-button
               v-if="row.status === 'pending' || row.status === 'running'"
               link
@@ -176,6 +223,14 @@ onMounted(load)
               @click="cancel(row)"
             >
               取消
+            </el-button>
+            <el-button
+              v-if="row.status !== 'pending' && row.status !== 'running'"
+              link
+              type="danger"
+              @click="remove(row)"
+            >
+              删除
             </el-button>
           </template>
         </el-table-column>
@@ -207,7 +262,14 @@ onMounted(load)
               <span class="mono">{{ detail.id.slice(0, 8) }}</span>
             </el-descriptions-item>
             <el-descriptions-item label="状态">
-              {{ statusMeta(TASK_STATUS, detail.status).label }}
+              <el-tag
+                v-if="retryStatus(detail)"
+                :type="retryStatus(detail)?.tone"
+                size="small"
+              >
+                {{ retryStatus(detail)?.label }}
+              </el-tag>
+              <span v-else>{{ statusMeta(TASK_STATUS, detail.status).label }}</span>
             </el-descriptions-item>
             <el-descriptions-item label="质量分">
               {{ detail.quality_score === null ? '—' : detail.quality_score.toFixed(1) }}
@@ -216,6 +278,34 @@ onMounted(load)
             <el-descriptions-item label="尝试次数">{{ detail.attempt }}</el-descriptions-item>
             <el-descriptions-item label="完成时间">{{ formatTime(detail.finished_at) }}</el-descriptions-item>
           </el-descriptions>
+
+          <div class="budget-row">
+            <el-tag size="small" effect="plain">自动重试剩余 {{ detail.actions.auto_retry_remaining }}</el-tag>
+            <el-tag size="small" effect="plain">人工继续剩余 {{ detail.actions.revive_remaining }}</el-tag>
+            <el-button
+              v-if="detail.actions.can_revive"
+              size="small"
+              type="warning"
+              plain
+              @click="retry(detail)"
+            >
+              从断点继续
+            </el-button>
+          </div>
+
+          <el-alert
+            v-if="detail.status === 'failed' && detail.error"
+            :title="detail.error.message"
+            :description="detail.error.hint ?? detail.error_message ?? ''"
+            type="error"
+            :closable="false"
+            show-icon
+          />
+
+          <section class="section">
+            <h3 class="section-title">执行历史</h3>
+            <TaskAttemptTimeline :attempts="detail.attempts" />
+          </section>
 
           <div v-if="detail.warnings.length" class="warnings">
             <el-alert
@@ -293,6 +383,26 @@ onMounted(load)
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.budget-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
 }
 
 .blocks {

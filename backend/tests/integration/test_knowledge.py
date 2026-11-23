@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import json
 import time
 import uuid
 from collections.abc import Callable, Iterator
@@ -48,6 +49,9 @@ def _entity_row(
     evidence: list[str] | None = None,
     documents: list[str] | None = None,
     confidence: float = 0.7,
+    attributes: dict[str, Any] | None = None,
+    identity_kind: str = "name",
+    identity_key: str | None = None,
 ) -> dict[str, Any]:
     now = int(time.time() * 1000)
     return {
@@ -64,7 +68,9 @@ def _entity_row(
         "document_id": (documents or [None])[0],
         "document_ids": documents or [],
         "evidence_block_ids": evidence or [],
-        "attributes_json": "{}",
+        "attributes_json": json.dumps(attributes or {}, ensure_ascii=False),
+        "identity_kind": identity_kind,
+        "identity_key": identity_key or f"{identity_kind}:{normalize_name(name)}",
         "created_at_ms": now,
         "updated_at_ms": now,
     }
@@ -79,6 +85,10 @@ def _relation_row(
     status: str = "confirmed",
     code: str = "works_at",
     confidence: float = 0.6,
+    attributes: dict[str, Any] | None = None,
+    evidence_text: str | None = None,
+    evidence_key: str | None = None,
+    description: str | None = None,
 ) -> dict[str, Any]:
     now = int(time.time() * 1000)
     return {
@@ -90,6 +100,10 @@ def _relation_row(
         "status": status,
         "confidence": confidence,
         "evidence_block_id": None,
+        "evidence_text": evidence_text,
+        "evidence_key": evidence_key or f"ev_{relation_id}",
+        "attributes_json": json.dumps(attributes or {}, ensure_ascii=False),
+        "description": description,
         "document_id": None,
         "extraction_task_id": None,
         "created_at_ms": now,
@@ -573,3 +587,151 @@ def test_review_permissions(
         ).status_code
         == 200
     )
+
+
+def test_relation_attribute_update_writes_audit(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    role_headers: Callable[[list[str]], dict[str, str]],
+    db: Session,
+    seed_graph: Any,
+) -> None:
+    workspace = _workspace_id(db)
+    source_id = f"t_{uuid.uuid4().hex}"
+    target_id = f"t_{uuid.uuid4().hex}"
+    relation_id = f"t_{uuid.uuid4().hex}"
+    code = f"rel_{uuid.uuid4().hex[:8]}"
+    seed_graph(
+        [
+            _entity_row(workspace, source_id, "张伟", status="confirmed"),
+            _entity_row(workspace, target_id, "星海科技", class_code="org", status="confirmed"),
+        ],
+        [
+            _relation_row(
+                workspace,
+                relation_id,
+                source_id,
+                target_id,
+                status="proposed",
+                code=code,
+                evidence_text="张伟自 2020 年起任职于星海科技",
+            )
+        ],
+    )
+
+    resp = client.patch(
+        f"{RELATIONS}/{relation_id}",
+        headers=auth_headers,
+        json={
+            "attributes": {"start_date": "2020-03-01", "title": "研发负责人"},
+            "description": "2020 年起任职",
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()["data"]
+    assert data["attributes"] == {"start_date": "2020-03-01", "title": "研发负责人"}
+    assert data["description"] == "2020 年起任职"
+    # 端点与类型不接受修改：请求里带了也不会生效
+    assert data["source_id"] == source_id
+    assert data["target_id"] == target_id
+    assert data["code"] == code
+
+    audit = (
+        db.query(AuditLog)
+        .filter(AuditLog.object_id == relation_id, AuditLog.action == "relation.update")
+        .one()
+    )
+    assert audit.before["description"] is None
+    assert audit.after["description"] == "2020 年起任职"
+
+    viewer = role_headers(["viewer"])
+    forbidden = client.patch(
+        f"{RELATIONS}/{relation_id}",
+        headers=viewer,
+        json={"attributes": {"title": "越权修改"}},
+    )
+    assert forbidden.status_code == 403
+
+
+def test_relation_attribute_update_rejected_conflicts(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    db: Session,
+    seed_graph: Any,
+) -> None:
+    workspace = _workspace_id(db)
+    source_id = f"t_{uuid.uuid4().hex}"
+    target_id = f"t_{uuid.uuid4().hex}"
+    relation_id = f"t_{uuid.uuid4().hex}"
+    seed_graph(
+        [
+            _entity_row(workspace, source_id, "张伟", status="confirmed"),
+            _entity_row(workspace, target_id, "星海科技", class_code="org", status="confirmed"),
+        ],
+        [
+            _relation_row(
+                workspace,
+                relation_id,
+                source_id,
+                target_id,
+                status="rejected",
+                code=f"rel_{uuid.uuid4().hex[:8]}",
+            )
+        ],
+    )
+
+    resp = client.patch(
+        f"{RELATIONS}/{relation_id}",
+        headers=auth_headers,
+        json={"attributes": {"title": "研发负责人"}},
+    )
+    assert resp.status_code == 409, resp.text
+
+
+def test_rename_updates_name_identity_only(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    db: Session,
+    seed_graph: Any,
+) -> None:
+    """名称身份要跟着新名字走；证件身份与名称无关，改名不该动它。"""
+    workspace = _workspace_id(db)
+    name_entity = f"t_{uuid.uuid4().hex}"
+    identity_entity = f"t_{uuid.uuid4().hex}"
+    seed_graph(
+        [
+            _entity_row(
+                workspace,
+                name_entity,
+                "星海科技",
+                identity_kind="name",
+                identity_key="name:星海科技",
+            ),
+            _entity_row(
+                workspace,
+                identity_entity,
+                "云图科技",
+                identity_kind="identity",
+                identity_key="identity:91310000XYZW",
+                attributes={"uscc": "91310000XYZW"},
+            ),
+        ]
+    )
+
+    renamed = client.post(
+        f"{ENTITIES}/{name_entity}/confirm",
+        headers=auth_headers,
+        json={"name": "星海科技集团"},
+    )
+    assert renamed.status_code == 200, renamed.text
+    assert renamed.json()["data"]["identity_kind"] == "name"
+    assert renamed.json()["data"]["identity_key"] == "name:星海科技集团"
+
+    kept = client.post(
+        f"{ENTITIES}/{identity_entity}/confirm",
+        headers=auth_headers,
+        json={"name": "云图科技股份有限公司"},
+    )
+    assert kept.status_code == 200, kept.text
+    assert kept.json()["data"]["identity_kind"] == "identity"
+    assert kept.json()["data"]["identity_key"] == "identity:91310000XYZW"

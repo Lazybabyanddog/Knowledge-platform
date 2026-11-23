@@ -39,6 +39,7 @@ export const reviewApi = {
   createFlow: (body: FlowPayload) => http.post<ReviewFlow>('/review-flows', body),
   updateFlow: (id: string, body: FlowPayload) =>
     http.patch<ReviewFlow>(`/review-flows/${id}`, body),
+  deleteFlow: (id: string) => http.delete<{ deleted: boolean }>(`/review-flows/${id}`),
 
   submit: (body: {
     document_id: string

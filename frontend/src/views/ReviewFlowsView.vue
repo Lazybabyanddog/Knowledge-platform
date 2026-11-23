@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 import { errorMessage } from '@/api/http'
 import { reviewApi } from '@/api/reviews'
@@ -179,6 +179,29 @@ async function toggleStatus(flow: ReviewFlow): Promise<void> {
   }
 }
 
+async function remove(flow: ReviewFlow): Promise<void> {
+  try {
+    await ElMessageBox.confirm(
+      `确定删除审批流「${flow.name}」吗？` +
+        (flow.is_default
+          ? ` 它是 ${DOC_TYPE[flow.doc_type] ?? flow.doc_type} 的默认流，删除后需重新指定默认审批流。`
+          : '') +
+        ' 已提交的审批实例按提交时的快照继续流转，不受影响。',
+      '删除审批流',
+      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' },
+    )
+  } catch {
+    return
+  }
+  try {
+    await reviewApi.deleteFlow(flow.id)
+    ElMessage.success('审批流已删除')
+    await load()
+  } catch (error) {
+    ElMessage.error(errorMessage(error))
+  }
+}
+
 onMounted(async () => {
   await Promise.all([load(), ensureUsers()])
 })
@@ -226,7 +249,7 @@ onMounted(async () => {
             <span class="muted small">{{ formatTime(row.updated_at) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="220" align="right">
+        <el-table-column label="操作" width="270" align="right">
           <template #default="{ row }: { row: ReviewFlow }">
             <el-button link type="primary" @click="openEdit(row)">修改</el-button>
             <el-button v-if="!row.is_default && row.status === 'active'" link @click="setDefault(row)">
@@ -239,6 +262,7 @@ onMounted(async () => {
             >
               {{ row.status === 'active' ? '停用' : '启用' }}
             </el-button>
+            <el-button link type="danger" @click="remove(row)">删除</el-button>
           </template>
         </el-table-column>
         <template #empty>

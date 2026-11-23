@@ -1,11 +1,12 @@
 """状态与角色枚举，取值与数据库、前端一一对应。
 
-全部继承 StrEnum，序列化到 JSON 即字符串，无需额外转换。
+除 ``OntologyStatus`` 用 IntEnum（整型 0/1）外，其余继承 StrEnum，
+序列化到 JSON 即字符串，无需额外转换。
 """
 
 from __future__ import annotations
 
-from enum import StrEnum
+from enum import IntEnum, StrEnum
 
 
 class UserStatus(StrEnum):
@@ -115,11 +116,14 @@ class StrategyStatus(StrEnum):
     DISABLED = "disabled"
 
 
-class OntologyStatus(StrEnum):
-    """本体定义（类/关系类型）的启用状态；禁用后不再参与抽取约束。"""
+class OntologyStatus(IntEnum):
+    """本体定义（类/关系类型）的启用状态；失效后不再参与抽取约束。
 
-    ACTIVE = "active"
-    DISABLED = "disabled"
+    取值为整型：0 有效、1 失效，与数据库 ``smallint`` 列一一对应。
+    """
+
+    VALID = 0
+    INVALID = 1
 
 
 class AuditAction(StrEnum):
@@ -142,17 +146,22 @@ class AuditAction(StrEnum):
     PARSE_TRIGGER = "parse.trigger"
     PARSE_RETRY = "parse.retry"
     PARSE_CANCEL = "parse.cancel"
+    PARSE_TASK_DELETE = "parse.task_delete"
     PARSE_STRATEGY_CREATE = "parse.strategy_create"
     PARSE_STRATEGY_UPDATE = "parse.strategy_update"
+    PARSE_STRATEGY_DELETE = "parse.strategy_delete"
 
     ONTOLOGY_CLASS_CREATE = "ontology.class_create"
     ONTOLOGY_CLASS_UPDATE = "ontology.class_update"
+    ONTOLOGY_CLASS_DELETE = "ontology.class_delete"
     ONTOLOGY_RELATION_CREATE = "ontology.relation_create"
     ONTOLOGY_RELATION_UPDATE = "ontology.relation_update"
+    ONTOLOGY_RELATION_DELETE = "ontology.relation_delete"
 
     EXTRACTION_TRIGGER = "extraction.trigger"
     EXTRACTION_RETRY = "extraction.retry"
     EXTRACTION_CANCEL = "extraction.cancel"
+    EXTRACTION_BACKFILL = "extraction.backfill"
     ENTITY_UPDATE = "entity.update"
     ENTITY_CONFIRM = "entity.confirm"
     ENTITY_REJECT = "entity.reject"
@@ -160,11 +169,13 @@ class AuditAction(StrEnum):
     ENTITY_MERGE_REVERT = "entity.merge_revert"
     RELATION_CONFIRM = "relation.confirm"
     RELATION_REJECT = "relation.reject"
+    RELATION_UPDATE = "relation.update"
 
     REVIEW_SUBMIT = "review.submit"
     REVIEW_APPROVE = "review.approve"
     REVIEW_REJECT = "review.reject"
     REVIEW_WITHDRAW = "review.withdraw"
+    REVIEW_FLOW_DELETE = "review.flow_delete"
 
     RETRIEVAL_SEARCH = "retrieval.search"
     RETRIEVAL_ASK = "retrieval.ask"

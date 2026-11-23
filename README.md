@@ -64,11 +64,15 @@ npm run build
 本体（实体类 / 关系类型）是抽取的约束来源，改一次版本号加一，并单向投影到 Neo4j 的 `:Class` 节点：
 
 ```bash
-POST   /api/v1/ontology/classes                     {"code": "org", "name": "组织", "attributes": {...}}
+POST   /api/v1/ontology/classes                     {"code": "org", "name": "组织", "attributes": {...}, "status": 0}
 PATCH  /api/v1/ontology/classes/<id>                {"parent_id": "<上级类 id>"}    # 成环返回 400
-POST   /api/v1/ontology/relations                   {"code": "works_at", "name": "任职", "source_class_id": "...", "target_class_id": "..."}
+POST   /api/v1/ontology/relations                   {"code": "HAS_PLAINTIFF", "name": "原告", "source_class_id": "...", "target_class_id": "...", "status": 0}
 POST   /api/v1/ontology/sync                        # 手工重放投影，返回 {"projected": n}
 ```
+
+- 编码以字母开头，仅含字母、数字与下划线，总长 2–64，**大小写均可且大小写敏感**（`HAS_PLAINTIFF` 与 `has_plaintiff` 是两个编码）。
+- `status` 创建时必传，`0` = 有效、`1` = 失效；`PATCH` 时可选但只接受 `0`/`1`。失效定义不出现在默认列表中，也不参与抽取约束。
+- 兼容性：旧客户端传 `"active"`/`"disabled"` 或不传 `status` 会返回 400；升级迁移会把存量定义的 `status` 统一置 `0`。
 
 抽取链路（`app/pipelines/extract/`）：`chunk_blocks → classify_blocks → extract_entities → extract_relations → schema_validate`，
 校验不通过时走 `repair_output` 回环（默认最多 2 次），仍不合法则整批跳过；最后 `dedupe_candidates → persist_candidates`

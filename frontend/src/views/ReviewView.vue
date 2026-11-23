@@ -6,7 +6,14 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { errorMessage } from '@/api/http'
 import { knowledgeApi } from '@/api/knowledge'
 import { ontologyApi } from '@/api/ontology'
-import type { EntityItem, EntitySource, OntologyClass, RelationItem } from '@/api/types'
+import type {
+  AttributeDef,
+  EntityItem,
+  EntitySource,
+  OntologyClass,
+  OntologyRelation,
+  RelationItem,
+} from '@/api/types'
 import { useAuthStore } from '@/stores/auth'
 import {
   ENTITY_STATUS,
@@ -40,6 +47,19 @@ const relationLoading = ref(false)
 const relations = ref<RelationItem[]>([])
 const relationTotal = ref(0)
 const relationQuery = reactive({ status: 'proposed', code: '', page: 1, page_size: 10 })
+const relationTypes = ref<Record<string, OntologyRelation>>({})
+
+const relationEditVisible = ref(false)
+const relationEditing = ref<RelationItem | null>(null)
+const relationSaving = ref(false)
+const relationDraft = reactive({
+  description: '',
+  /**
+   * 只放该关系类型声明过的属性：后端按 AttributeDef 强转，未知键会被丢掉。
+   * 用 any 是因为一个输入框可能绑字符串/数值/布尔/数组，v-model 需要可赋值表达式。
+   */
+  attributes: {} as Record<string, any>,
+})
 
 const sourceVisible = ref(false)
 const sourceLoading = ref(false)
@@ -68,6 +88,29 @@ const relationStatusOptions = Object.entries(RELATION_STATUS).map(([value, meta]
 
 function entityName(id: string): string {
   return entityMap.value[id] ?? id.slice(0, 8)
+}
+
+/** 属性在列表里只给"看得见的两三条"：完整值留给编辑弹窗。 */
+function attributePairs(attributes: Record<string, unknown> | null | undefined) {
+  return Object.entries(attributes ?? {}).map(([key, value]) => ({
+    key,
+    value: Array.isArray(value) ? value.join('、') : String(value ?? ''),
+  }))
+}
+
+const editingDefs = computed<AttributeDef[]>(() => {
+  const code = relationEditing.value?.code
+  if (!code) return []
+  return Object.values(relationTypes.value[code]?.attributes ?? {})
+})
+
+async function loadRelationTypes(): Promise<void> {
+  try {
+    const data = await ontologyApi.relations(true)
+    relationTypes.value = Object.fromEntries(data.items.map((item) => [item.code, item]))
+  } catch {
+    relationTypes.value = {}
+  }
 }
 
 async function loadClasses(): Promise<void> {
@@ -297,8 +340,58 @@ async function rejectRelation(row: RelationItem): Promise<void> {
   }
 }
 
+function openRelationEdit(row: RelationItem): void {
+  relationEditing.value = row
+  relationDraft.description = row.description ?? ''
+  const defs = Object.values(relationTypes.value[row.code]?.attributes ?? {})
+  const draft: Record<string, unknown> = {}
+  for (const def of defs) {
+    const current = row.attributes?.[def.code]
+    if (current !== undefined && current !== null) {
+      draft[def.code] = Array.isArray(current) ? [...current] : current
+      continue
+    }
+    draft[def.code] = def.type === 'array' ? [] : def.type === 'boolean' ? false : ''
+  }
+  relationDraft.attributes = draft
+  relationEditVisible.value = true
+}
+
+function normalizeDraft(): Record<string, unknown> {
+  const payload: Record<string, unknown> = {}
+  for (const def of editingDefs.value) {
+    const value = relationDraft.attributes[def.code]
+    if (def.type === 'array') {
+      const items = Array.isArray(value) ? value.filter((item) => String(item).trim()) : []
+      if (items.length) payload[def.code] = items
+      continue
+    }
+    if (value === '' || value === null || value === undefined) continue
+    payload[def.code] = value
+  }
+  return payload
+}
+
+async function saveRelationEdit(): Promise<void> {
+  if (!relationEditing.value) return
+  relationSaving.value = true
+  try {
+    await knowledgeApi.updateRelation(relationEditing.value.id, {
+      attributes: normalizeDraft(),
+      description: relationDraft.description.trim() || null,
+    })
+    ElMessage.success('关系属性已更新')
+    relationEditVisible.value = false
+    await loadRelations()
+  } catch (error) {
+    ElMessage.error(errorMessage(error))
+  } finally {
+    relationSaving.value = false
+  }
+}
+
 onMounted(async () => {
-  await Promise.all([loadClasses(), loadEntities(), loadRelations()])
+  await Promise.all([loadClasses(), loadEntities(), loadRelations(), loadRelationTypes()])
 })
 </script>
 
@@ -380,6 +473,17 @@ onMounted(async () => {
                 </div>
                 <div v-if="row.aliases.length" class="muted small">别名：{{ row.aliases.join('、') }}</div>
                 <div v-if="row.description" class="muted small">{{ row.description }}</div>
+                <div v-if="attributePairs(row.attributes).length" class="row attr-chips">
+                  <el-tag
+                    v-for="pair in attributePairs(row.attributes)"
+                    :key="pair.key"
+                    size="small"
+                    effect="plain"
+                    type="info"
+                  >
+                    {{ pair.key }}：{{ pair.value }}
+                  </el-tag>
+                </div>
               </template>
             </el-table-column>
             <el-table-column label="类型" width="100">
@@ -475,6 +579,24 @@ onMounted(async () => {
                 {{ Math.round(row.confidence * 100) }}%
               </template>
             </el-table-column>
+            <el-table-column label="属性 / 证据" min-width="240">
+              <template #default="{ row }: { row: RelationItem }">
+                <div v-if="attributePairs(row.attributes).length" class="row attr-chips">
+                  <el-tag
+                    v-for="pair in attributePairs(row.attributes)"
+                    :key="pair.key"
+                    size="small"
+                    effect="plain"
+                  >
+                    {{ pair.key }}：{{ pair.value }}
+                  </el-tag>
+                </div>
+                <div v-if="row.description" class="muted small">{{ row.description }}</div>
+                <div v-if="row.evidence_text" class="muted small evidence">
+                  「{{ row.evidence_text }}」
+                </div>
+              </template>
+            </el-table-column>
             <el-table-column label="状态" width="96">
               <template #default="{ row }: { row: RelationItem }">
                 <el-tag :type="statusMeta(RELATION_STATUS, row.status).tone" size="small">
@@ -482,13 +604,20 @@ onMounted(async () => {
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="150" align="right">
+            <el-table-column label="操作" width="190" align="right">
               <template #default="{ row }: { row: RelationItem }">
                 <template v-if="canReview && row.status === 'proposed'">
                   <el-button link type="success" @click="confirmRelation(row)">确认</el-button>
                   <el-button link type="danger" @click="rejectRelation(row)">驳回</el-button>
                 </template>
-                <span v-else class="muted small">—</span>
+                <el-button
+                  v-if="canReview && row.status !== 'rejected'"
+                  link
+                  type="primary"
+                  @click="openRelationEdit(row)"
+                >
+                  改属性
+                </el-button>
               </template>
             </el-table-column>
             <template #empty>
@@ -539,6 +668,73 @@ onMounted(async () => {
         </div>
       </div>
     </el-drawer>
+
+    <el-dialog v-model="relationEditVisible" title="修正关系属性" width="560px">
+      <p class="muted small">
+        只改属性与描述：起点、终点与关系类型都是原文事实，改了就等于伪造一条不存在的关系。
+        留空的属性不会写入；枚举外的取值会被服务端丢弃。
+      </p>
+      <el-form label-position="top">
+        <el-form-item
+          v-for="def in editingDefs"
+          :key="def.code"
+          :label="`${def.name}（${def.code}${def.required ? ' · 必填' : ''}）`"
+        >
+          <el-select
+            v-if="def.type === 'enum'"
+            v-model="relationDraft.attributes[def.code]"
+            clearable
+            filterable
+            style="width: 100%"
+          >
+            <el-option v-for="item in def.enum_values ?? []" :key="item" :label="item" :value="item" />
+          </el-select>
+          <el-select
+            v-else-if="def.type === 'array'"
+            v-model="relationDraft.attributes[def.code]"
+            multiple
+            filterable
+            allow-create
+            default-first-option
+            style="width: 100%"
+          />
+          <el-switch v-else-if="def.type === 'boolean'" v-model="relationDraft.attributes[def.code]" />
+          <el-input-number
+            v-else-if="def.type === 'number'"
+            v-model="relationDraft.attributes[def.code]"
+            :controls="false"
+            style="width: 100%"
+          />
+          <el-date-picker
+            v-else-if="def.type === 'date'"
+            v-model="relationDraft.attributes[def.code]"
+            type="date"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+          />
+          <el-input
+            v-else
+            v-model="relationDraft.attributes[def.code]"
+            :placeholder="def.examples?.[0] ?? def.description"
+          />
+          <div class="muted small">{{ def.hint ?? def.description }}</div>
+        </el-form-item>
+        <el-empty
+          v-if="!editingDefs.length"
+          description="该关系类型没有声明属性，只能改描述"
+          :image-size="56"
+        />
+        <el-form-item label="描述">
+          <el-input v-model="relationDraft.description" type="textarea" :rows="2" maxlength="2000" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="relationEditVisible = false">取消</el-button>
+        <el-button type="primary" :loading="relationSaving" @click="saveRelationEdit">
+          保存
+        </el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="mergeVisible" title="合并实体" width="520px">
       <p class="muted small">
@@ -641,5 +837,15 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.attr-chips {
+  margin-top: 4px;
+  gap: 4px;
+}
+
+.evidence {
+  margin-top: 2px;
+  line-height: 1.6;
 }
 </style>

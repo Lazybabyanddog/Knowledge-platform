@@ -19,23 +19,35 @@ from app.infra.graph.driver import graph_session
 ENTITY_LABEL = "Entity"
 REL_LABEL = "REL"
 
+# 跨文档对齐后，同一身份节点会被多个文档/任务反复写入：
+# - 状态只在创建时置 proposed，已确认/已驳回绝不被降级；
+# - 名称、首次来源、创建时间保留首次写入的值，新名称只会进 aliases；
+# - 别名、文档集合、证据集合由 writer 在 Python 侧合并后整串写回（并集）；
+# - 属性同样是合并后的整串。
 _UPSERT_ENTITIES = """
 UNWIND $rows AS row
 MERGE (e:Entity {id: row.id})
-SET e.workspace_id = row.workspace_id,
+ON CREATE SET
+    e.workspace_id = row.workspace_id,
     e.class_code = row.class_code,
     e.name = row.name,
     e.normalized_name = row.normalized_name,
-    e.aliases = row.aliases,
     e.description = row.description,
-    e.status = row.status,
+    e.status = coalesce(row.status, 'proposed'),
     e.confidence = row.confidence,
     e.extraction_task_id = row.extraction_task_id,
     e.document_id = row.document_id,
+    e.identity_key = row.identity_key,
+    e.identity_kind = row.identity_kind,
+    e.created_at_ms = row.created_at_ms
+ON MATCH SET
+    e.description = coalesce(e.description, row.description),
+    e.confidence = CASE WHEN row.confidence > coalesce(e.confidence, 0.0)
+                        THEN row.confidence ELSE e.confidence END
+SET e.aliases = row.aliases,
     e.document_ids = row.document_ids,
     e.evidence_block_ids = row.evidence_block_ids,
     e.attributes_json = row.attributes_json,
-    e.created_at_ms = row.created_at_ms,
     e.updated_at_ms = row.updated_at_ms
 """
 
@@ -51,14 +63,21 @@ UNWIND $rows AS row
 MATCH (s:Entity {id: row.source_id})
 MATCH (t:Entity {id: row.target_id})
 MERGE (s)-[r:REL {id: row.id}]->(t)
-SET r.workspace_id = row.workspace_id,
+ON CREATE SET
+    r.workspace_id = row.workspace_id,
     r.code = row.code,
-    r.status = row.status,
+    r.status = coalesce(row.status, 'proposed'),
     r.confidence = row.confidence,
     r.evidence_block_id = row.evidence_block_id,
     r.document_id = row.document_id,
     r.extraction_task_id = row.extraction_task_id,
-    r.created_at_ms = row.created_at_ms,
+    r.evidence_key = row.evidence_key,
+    r.evidence_text = row.evidence_text,
+    r.created_at_ms = row.created_at_ms
+ON MATCH SET
+    r.confidence = CASE WHEN row.confidence > coalesce(r.confidence, 0.0)
+                        THEN row.confidence ELSE r.confidence END
+SET r.attributes_json = row.attributes_json,
     r.updated_at_ms = row.updated_at_ms
 """
 
@@ -97,6 +116,8 @@ def node_to_entity(node: dict[str, Any]) -> dict[str, Any]:
         "document_id": node.get("document_id"),
         "document_ids": list(node.get("document_ids") or []),
         "evidence_block_ids": list(node.get("evidence_block_ids") or []),
+        "identity_key": node.get("identity_key"),
+        "identity_kind": node.get("identity_kind"),
         "attributes": _parse_attributes(node.get("attributes_json")),
         "created_at_ms": node.get("created_at_ms"),
         "updated_at_ms": node.get("updated_at_ms"),
@@ -114,9 +135,13 @@ def rel_to_dict(record: dict[str, Any]) -> dict[str, Any]:
         "confidence": float(rel.get("confidence") or 0.0),
         "status": rel.get("status"),
         "evidence_block_id": rel.get("evidence_block_id"),
+        "evidence_text": rel.get("evidence_text"),
+        "evidence_key": rel.get("evidence_key"),
         "document_id": rel.get("document_id"),
         "extraction_task_id": rel.get("extraction_task_id"),
         "reject_reason": rel.get("reject_reason"),
+        "description": rel.get("description"),
+        "attributes": _parse_attributes(rel.get("attributes_json")),
         "created_at_ms": rel.get("created_at_ms"),
         "updated_at_ms": rel.get("updated_at_ms"),
     }
@@ -140,6 +165,53 @@ class EntityRepository:
         with graph_session() as session:
             session.run(_UPSERT_RELATIONS, rows=rows).consume()
         return len(rows)
+
+    def resolve_by_identity(
+        self,
+        workspace_id: str,
+        class_codes: list[str],
+        identity_keys: list[str],
+    ) -> dict[tuple[str, str], dict[str, Any]]:
+        """按 (class_code, identity_key) 批量回查既有节点。
+
+        写入路径先做这一步，再决定落到哪个 id：
+        人工改名过的节点、被合并掉的节点都能被正确命中，而不是再长出一个新节点。
+        """
+        if not class_codes or not identity_keys:
+            return {}
+        with graph_session() as session:
+            records = list(
+                session.run(
+                    """
+                    MATCH (e:Entity)
+                    WHERE e.workspace_id = $workspace_id
+                      AND e.class_code IN $class_codes
+                      AND e.identity_key IN $identity_keys
+                    RETURN e
+                    """,
+                    workspace_id=workspace_id,
+                    class_codes=class_codes,
+                    identity_keys=identity_keys,
+                )
+            )
+        resolved: dict[tuple[str, str], dict[str, Any]] = {}
+        for item in records:
+            node = node_to_entity(item["e"])
+            resolved[(node["class_code"], node["identity_key"])] = node
+        return resolved
+
+    def resolve_merged_target(self, workspace_id: str, entity_id: str) -> str | None:
+        """被合并节点的写入要重定向到 merged_into，避免"复活"出孤立节点。"""
+        with graph_session() as session:
+            record = session.run(
+                """
+                MATCH (e:Entity {id: $id, workspace_id: $workspace_id})
+                RETURN e.merged_into AS merged_into
+                """,
+                id=entity_id,
+                workspace_id=workspace_id,
+            ).single()
+        return record["merged_into"] if record and record["merged_into"] else None
 
     # ---- 单点读取 ----
     def get_entity(self, workspace_id: str, entity_id: str) -> dict[str, Any] | None:
@@ -303,6 +375,186 @@ class EntityRepository:
                 reason=reject_reason,
             ).single()
         return rel_to_dict(record) if record else None
+
+    def update_relation_attributes(
+        self,
+        workspace_id: str,
+        relation_id: str,
+        *,
+        attributes_json: str,
+        description: str | None = None,
+    ) -> dict[str, Any] | None:
+        payload: dict[str, Any] = {"attributes_json": attributes_json, "updated_at_ms": _now_ms()}
+        if description is not None:
+            payload["description"] = description
+        with graph_session() as session:
+            record = session.run(
+                """
+                MATCH (s:Entity)-[r:REL {id: $id}]->(t:Entity)
+                WHERE r.workspace_id = $workspace_id
+                SET r += $props
+                RETURN r, s.id AS source_id, t.id AS target_id
+                """,
+                id=relation_id,
+                workspace_id=workspace_id,
+                props=payload,
+            ).single()
+        return rel_to_dict(record) if record else None
+
+    # ---- 存量重抽：按文档清理与人工结论快照 ----
+    def detach_document(self, workspace_id: str, document_id: str) -> tuple[int, int]:
+        """把某文档从实体 ``document_ids`` 里剔除，节点空了才删。
+
+        跨文档对齐后一个节点可能同时属于多份文档，直接删节点会误伤其他文档的知识。
+        返回 ``(命中的实体数, 删除的实体数)``。
+        """
+        with graph_session() as session:
+            matched = session.run(
+                """
+                MATCH (e:Entity)
+                WHERE e.workspace_id = $workspace_id
+                  AND $document_id IN coalesce(e.document_ids, [])
+                RETURN count(e) AS total
+                """,
+                workspace_id=workspace_id,
+                document_id=document_id,
+            ).single()
+            touched = session.run(
+                """
+                MATCH (e:Entity)
+                WHERE e.workspace_id = $workspace_id
+                  AND $document_id IN coalesce(e.document_ids, [])
+                SET e.document_ids = [item IN e.document_ids WHERE item <> $document_id],
+                    e.updated_at_ms = $now
+                WITH e, size(e.document_ids) AS remaining
+                WHERE remaining = 0
+                DETACH DELETE e
+                RETURN count(*) AS removed
+                """,
+                workspace_id=workspace_id,
+                document_id=document_id,
+                now=_now_ms(),
+            ).single()
+        return int(matched["total"]), int(touched["removed"])
+
+    def list_document_relations(self, workspace_id: str, document_id: str) -> list[dict[str, Any]]:
+        with graph_session() as session:
+            records = list(
+                session.run(
+                    """
+                    MATCH (s:Entity)-[r:REL]->(t:Entity)
+                    WHERE r.workspace_id = $workspace_id AND r.document_id = $document_id
+                    RETURN r, s.id AS source_id, t.id AS target_id,
+                           s.identity_key AS source_identity_key,
+                           t.identity_key AS target_identity_key
+                    """,
+                    workspace_id=workspace_id,
+                    document_id=document_id,
+                )
+            )
+        rows = []
+        for item in records:
+            row = rel_to_dict(item)
+            row["source_identity_key"] = item["source_identity_key"]
+            row["target_identity_key"] = item["target_identity_key"]
+            rows.append(row)
+        return rows
+
+    def delete_document_relations(self, workspace_id: str, document_id: str) -> int:
+        with graph_session() as session:
+            record = session.run(
+                """
+                MATCH (:Entity)-[r:REL]->(:Entity)
+                WHERE r.workspace_id = $workspace_id AND r.document_id = $document_id
+                WITH r LIMIT 10000
+                DELETE r
+                RETURN count(*) AS removed
+                """,
+                workspace_id=workspace_id,
+                document_id=document_id,
+            ).single()
+        return int(record["removed"] if record else 0)
+
+    def review_snapshot(self, workspace_id: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        """重抽前快照人工结论，重抽后按身份回贴。"""
+        with graph_session() as session:
+            entity_records = list(
+                session.run(
+                    """
+                    MATCH (e:Entity)
+                    WHERE e.workspace_id = $workspace_id
+                      AND e.status IN ['confirmed', 'rejected']
+                    RETURN e.id AS id, e.class_code AS class_code, e.name AS name,
+                           e.normalized_name AS normalized_name, e.identity_key AS identity_key,
+                           e.document_ids AS document_ids,
+                           e.status AS status, e.reject_reason AS reject_reason
+                    """,
+                    workspace_id=workspace_id,
+                )
+            )
+            relation_records = list(
+                session.run(
+                    """
+                    MATCH (s:Entity)-[r:REL]->(t:Entity)
+                    WHERE r.workspace_id = $workspace_id
+                      AND r.status IN ['confirmed', 'rejected']
+                    RETURN r.id AS id, r.code AS code, r.evidence_key AS evidence_key,
+                           r.document_id AS document_id,
+                           s.id AS source_id, t.id AS target_id,
+                           s.identity_key AS source_identity_key,
+                           t.identity_key AS target_identity_key,
+                           r.status AS status, r.reject_reason AS reject_reason
+                    """,
+                    workspace_id=workspace_id,
+                )
+            )
+        return (
+            [dict(item) for item in entity_records],
+            [dict(item) for item in relation_records],
+        )
+
+    def apply_review_status(
+        self,
+        workspace_id: str,
+        *,
+        entity_id: str,
+        status: str,
+        reject_reason: str | None,
+    ) -> None:
+        with graph_session() as session:
+            session.run(
+                """
+                MATCH (e:Entity {id: $id, workspace_id: $workspace_id})
+                SET e.status = $status, e.reject_reason = $reason, e.updated_at_ms = $now
+                """,
+                id=entity_id,
+                workspace_id=workspace_id,
+                status=status,
+                reason=reject_reason,
+                now=_now_ms(),
+            ).consume()
+
+    def apply_relation_review_status(
+        self,
+        workspace_id: str,
+        *,
+        relation_id: str,
+        status: str,
+        reject_reason: str | None,
+    ) -> None:
+        with graph_session() as session:
+            session.run(
+                """
+                MATCH (:Entity)-[r:REL {id: $id}]->(:Entity)
+                WHERE r.workspace_id = $workspace_id
+                SET r.status = $status, r.reject_reason = $reason, r.updated_at_ms = $now
+                """,
+                id=relation_id,
+                workspace_id=workspace_id,
+                status=status,
+                reason=reject_reason,
+                now=_now_ms(),
+            ).consume()
 
     # ---- 合并 ----
     def merge_entities(
@@ -593,6 +845,26 @@ class EntityRepository:
                 frontier = next_frontier
 
         return list(nodes.values()), list(edges.values()), truncated
+
+    def count_document_legacy_entities(self, workspace_id: str, document_id: str) -> int:
+        """老规则产出的实体：没有身份键或属性整串为空。
+
+        这类节点重抽才有意义（新规则会补齐身份键与属性），也是默认范围的判定依据。
+        """
+        with graph_session() as session:
+            record = session.run(
+                """
+                MATCH (e:Entity)
+                WHERE e.workspace_id = $workspace_id
+                  AND $document_id IN coalesce(e.document_ids, [])
+                  AND (e.identity_key IS NULL
+                       OR coalesce(e.attributes_json, '') IN ['', '{}'])
+                RETURN count(e) AS total
+                """,
+                workspace_id=workspace_id,
+                document_id=document_id,
+            ).single()
+        return int(record["total"] if record else 0)
 
     def list_document_entities(
         self,

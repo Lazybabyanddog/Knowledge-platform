@@ -53,6 +53,19 @@ def project_class_safe(row: OntologyClass, parent_code: str | None = None) -> No
         logger.warning("本体类投影失败 code=%s", row.code, exc_info=True)
 
 
+def unproject_class_safe(workspace_id: uuid.UUID, code: str) -> None:
+    """删除实体类时同步摘掉图库节点，失败只告警（可整体重放修正）。"""
+    try:
+        with graph_session() as session:
+            session.run(
+                "MATCH (c:Class {workspace_id: $workspace_id, code: $code}) DETACH DELETE c",
+                workspace_id=str(workspace_id),
+                code=code,
+            ).consume()
+    except Exception:  # noqa: BLE001 - 图库故障降级为告警
+        logger.warning("本体类投影删除失败 code=%s", code, exc_info=True)
+
+
 def project_workspace(classes: list[OntologyClass]) -> int:
     """整体重放：先清掉该空间的 Class 节点再全量写入。"""
     if not classes:
@@ -67,4 +80,9 @@ def project_workspace(classes: list[OntologyClass]) -> int:
     return project_classes(classes, parent_codes)
 
 
-__all__ = ["project_class_safe", "project_classes", "project_workspace"]
+__all__ = [
+    "project_class_safe",
+    "project_classes",
+    "project_workspace",
+    "unproject_class_safe",
+]

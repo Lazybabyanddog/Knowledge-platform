@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.domain.enums import OntologyStatus
@@ -32,12 +32,39 @@ class OntologyRepository:
     ) -> list[OntologyClass]:
         stmt = select(OntologyClass).where(OntologyClass.workspace_id == workspace_id)
         if not include_disabled:
-            stmt = stmt.where(OntologyClass.status == OntologyStatus.ACTIVE.value)
+            stmt = stmt.where(OntologyClass.status == OntologyStatus.VALID.value)
         return list(self.db.scalars(stmt.order_by(OntologyClass.code)))
 
     def add_class(self, row: OntologyClass) -> OntologyClass:
         self.db.add(row)
         return row
+
+    def count_class_relations(self, class_id: uuid.UUID) -> int:
+        """作为起点或终点被多少个关系类型引用（删除前必须为 0）。"""
+        return int(
+            self.db.scalar(
+                select(func.count())
+                .select_from(OntologyRelation)
+                .where(
+                    or_(
+                        OntologyRelation.source_class_id == class_id,
+                        OntologyRelation.target_class_id == class_id,
+                    )
+                )
+            )
+            or 0
+        )
+
+    def detach_children(self, class_id: uuid.UUID) -> None:
+        """删除父类前把子类升为根类，与父类删除保持同一事务。"""
+        self.db.execute(
+            update(OntologyClass)
+            .where(OntologyClass.parent_id == class_id)
+            .values(parent_id=None)
+        )
+
+    def delete_class(self, row: OntologyClass) -> None:
+        self.db.delete(row)
 
     # ---- 关系类型 ----
     def get_relation(self, relation_id: uuid.UUID) -> OntologyRelation | None:
@@ -56,12 +83,15 @@ class OntologyRepository:
     ) -> list[OntologyRelation]:
         stmt = select(OntologyRelation).where(OntologyRelation.workspace_id == workspace_id)
         if not include_disabled:
-            stmt = stmt.where(OntologyRelation.status == OntologyStatus.ACTIVE.value)
+            stmt = stmt.where(OntologyRelation.status == OntologyStatus.VALID.value)
         return list(self.db.scalars(stmt.order_by(OntologyRelation.code)))
 
     def add_relation(self, row: OntologyRelation) -> OntologyRelation:
         self.db.add(row)
         return row
+
+    def delete_relation(self, row: OntologyRelation) -> None:
+        self.db.delete(row)
 
     # ---- 版本 ----
     def current_version(self, workspace_id: uuid.UUID) -> int:

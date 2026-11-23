@@ -12,8 +12,20 @@ import re
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from app.infra.llm import LLMError, chat_json, is_llm_configured
-from app.infra.llm.prompts import ENTITY_SYSTEM, REPAIR_SYSTEM, blocks_prompt, ontology_prompt
+from app.infra.llm import (
+    LLMError,
+    LLMPermanentError,
+    LLMTransientError,
+    chat_json,
+    is_llm_configured,
+)
+from app.infra.llm.prompts import (
+    ENTITY_SYSTEM,
+    REPAIR_SYSTEM,
+    blocks_prompt,
+    ontology_prompt,
+    prompt_projection,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +96,8 @@ class RuleBasedExtractor:
                         "name": mention,
                         "aliases": [],
                         "description": None,
+                        # 规则抽取不猜属性值：结构上保持与 LLM 输出一致，值留空。
+                        "attributes": {},
                         "confidence": 0.6,
                         "evidence_block_ids": [block_id],
                     }
@@ -96,13 +110,16 @@ class RuleBasedExtractor:
                     continue
                 if source_class not in by_class or target_class not in by_class:
                     continue
-                if not self._relation_hit(content, meta):
+                evidence = self._relation_evidence(fragments, meta)
+                if evidence is None:
                     continue
                 relation_rows.append(
                     {
                         "source_ref": f"{block_id}:{source_class}",
                         "target_ref": f"{block_id}:{target_class}",
                         "code": relation_code,
+                        "attributes": {},
+                        "evidence_text": evidence,
                         "confidence": 0.55,
                         "evidence_block_id": block_id,
                     }
@@ -130,9 +147,13 @@ class RuleBasedExtractor:
         return None
 
     @staticmethod
-    def _relation_hit(content: str, meta: dict[str, Any]) -> bool:
+    def _relation_evidence(fragments: list[str], meta: dict[str, Any]) -> str | None:
+        """命中的片段直接当证据原文：规则抽取的"证据"就是这句话本身。"""
         keywords = [meta.get("name") or "", *(meta.get("keywords") or [])]
-        return any(word and word in content for word in keywords)
+        for fragment in fragments:
+            if any(word and word in fragment for word in keywords):
+                return fragment
+        return None
 
 
 class LLMExtractor:
@@ -154,6 +175,10 @@ class LLMExtractor:
         )
         try:
             return BatchExtraction(raw=chat_json(ENTITY_SYSTEM, user))
+        except (LLMTransientError, LLMPermanentError):
+            # 服务不可用不是"这一批没价值"：往上抛，让任务失败并进入重试预算，
+            # 否则会变成"超时 250 次、任务成功、0 实体"。
+            raise
         except LLMError as exc:
             logger.warning("LLM 抽取失败: %s", exc)
             return BatchExtraction(raw=None, error=str(exc))
@@ -166,19 +191,20 @@ class LLMExtractor:
         classes: dict[str, dict[str, Any]],
         relations: dict[str, dict[str, Any]],
     ) -> BatchExtraction:
+        projected_classes, projected_relations = prompt_projection(
+            list(classes.values()), list(relations.values())
+        )
         expected = (
             '{"entities":[{"ref":"","class_code":"","name":"","aliases":[],'
-            '"description":"","confidence":0.0,"evidence_block_ids":[]}],'
-            '"relations":[{"source_ref":"","target_ref":"","code":"","confidence":0.0,'
-            '"evidence_block_id":""}]}'
+            '"description":"","attributes":{},"confidence":0.0,'
+            '"evidence_block_ids":[]}],'
+            '"relations":[{"source_ref":"","target_ref":"","code":"","attributes":{},'
+            '"evidence_text":"","confidence":0.0,"evidence_block_id":""}]}'
         )
         user = json.dumps(
             {
                 "期望结构": expected,
-                "本体": {
-                    "classes": list(classes.values()),
-                    "relations": list(relations.values()),
-                },
+                "本体": {"classes": projected_classes, "relations": projected_relations},
                 "校验问题": issues,
                 "上一次输出": raw,
                 "原文块": _payloads(blocks),
@@ -187,6 +213,8 @@ class LLMExtractor:
         )
         try:
             return BatchExtraction(raw=chat_json(REPAIR_SYSTEM, user))
+        except (LLMTransientError, LLMPermanentError):
+            raise
         except LLMError as exc:
             logger.warning("LLM 修复失败: %s", exc)
             return BatchExtraction(raw=raw, error=str(exc))

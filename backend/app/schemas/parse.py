@@ -8,6 +8,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
 
 from app.domain.enums import BlockType, ParseTaskStatus
+from app.schemas.task import TaskActions, TaskErrorInfo
 
 DocType = Literal["pdf", "office", "image", "text", "html"]
 MAX_CONFIG_KEYS = 30
@@ -79,9 +80,13 @@ class ParseAttemptItem(BaseModel):
     id: str
     attempt_no: int
     status: str
+    source: str = "manual"
     quality_score: int | None = None
+    stats: dict[str, Any] = Field(default_factory=dict)
     error_code: str | None = None
     error_message: str | None = None
+    error_detail: dict[str, Any] | None = None
+    duration_ms: int | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
 
@@ -98,6 +103,13 @@ class ParseTaskItem(BaseModel):
     stats: dict[str, Any] = Field(default_factory=dict)
     error_code: str | None = None
     error_message: str | None = None
+    # 对外只给"能看懂的原因"，内部错误码保留在 error_code
+    error: TaskErrorInfo | None = None
+    auto_retries: int = 0
+    downgrade_retries: int = 0
+    manual_revives: int = 0
+    # 下一次执行由谁排的：pending 时前端据此区分"系统重试中"与"人工触发"
+    next_source: str | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
     created_at: datetime
@@ -107,6 +119,7 @@ class ParseTaskItem(BaseModel):
 class ParseTaskDetail(ParseTaskItem):
     warnings: list[str] = Field(default_factory=list)
     attempts: list[ParseAttemptItem] = Field(default_factory=list)
+    actions: TaskActions = Field(default_factory=TaskActions)
 
 
 class ParseTaskListResponse(BaseModel):

@@ -22,6 +22,7 @@ from app.pipelines.extract.nodes import (
     persist_candidates,
     repair_output,
     route_after_batch,
+    route_after_chunk,
     route_after_classify,
     route_after_validate,
     schema_validate,
@@ -45,7 +46,12 @@ def get_extract_graph() -> Any:
     graph.add_node("persist_candidates", persist_candidates)
 
     graph.add_edge(START, "chunk_blocks")
-    graph.add_edge("chunk_blocks", "classify_blocks")
+    # 断点恢复到末尾（或全部批次已完成）时不再跑空批，直接去去重与落库
+    graph.add_conditional_edges(
+        "chunk_blocks",
+        route_after_chunk,
+        {"extract": "classify_blocks", "done": "dedupe_candidates"},
+    )
     graph.add_conditional_edges(
         "classify_blocks",
         route_after_classify,

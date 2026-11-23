@@ -60,6 +60,18 @@ class ParseTask(UUIDPrimaryKeyMixin, Base):
         server_default=ParseTaskStatus.PENDING.value,
     )
     attempt: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    # 预算分层：attempt 是执行序号，下面三个各管一类来源，互不侵占
+    auto_retries: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    downgrade_retries: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    manual_revives: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    # 下一次执行由谁排的：auto_retry / manual_revive / watchdog
+    next_source: Mapped[str | None] = mapped_column(String(24))
     quality_score: Mapped[int | None] = mapped_column(Integer)
     low_quality: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
@@ -90,12 +102,19 @@ class ParseTaskAttempt(UUIDPrimaryKeyMixin, Base):
     )
     attempt_no: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False)
+    # manual / auto_retry / manual_revive / watchdog
+    source: Mapped[str] = mapped_column(
+        String(24), nullable=False, default="manual", server_default="manual"
+    )
     quality_score: Mapped[int | None] = mapped_column(Integer)
     stats: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
     )
     error_code: Mapped[str | None] = mapped_column(String(64))
     error_message: Mapped[str | None] = mapped_column(Text)
+    error_detail: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    duration_ms: Mapped[int | None] = mapped_column(Integer)
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

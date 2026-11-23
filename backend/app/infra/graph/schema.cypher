@@ -36,9 +36,21 @@ FOR (e:Entity) ON (e.workspace_id);
 CREATE INDEX entity_class_code IF NOT EXISTS
 FOR (e:Entity) ON (e.class_code);
 
+// 跨文档实体对齐：写入前按 (workspace, class_code, identity_key) 解析目标节点
+CREATE INDEX entity_identity IF NOT EXISTS
+FOR (e:Entity) ON (e.workspace_id, e.class_code, e.identity_key);
+
+// 身份键单独回查（改名、合并复活时只按 identity_key 找）
+CREATE INDEX entity_identity_key IF NOT EXISTS
+FOR (e:Entity) ON (e.identity_key);
+
 // 候选关系筛选
 CREATE INDEX rel_status IF NOT EXISTS
 FOR ()-[r:REL]-() ON (r.status);
+
+// 关系证据键：同一处原文只保留一条关系实例
+CREATE INDEX rel_evidence_key IF NOT EXISTS
+FOR ()-[r:REL]-() ON (r.evidence_key);
 
 // 合并记录按目标实体回查
 CREATE INDEX merge_record_target IF NOT EXISTS

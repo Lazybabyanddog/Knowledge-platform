@@ -221,6 +221,51 @@ def test_blocking_issues_skip_batch_after_repairs() -> None:
     assert calls[0]["relations"] == []
 
 
+def test_attribute_issues_are_counted_without_burning_repair_round() -> None:
+    classes = {
+        "person": {
+            "code": "person",
+            "name": "张伟",
+            "attributes": {
+                "uscc": {
+                    "code": "uscc",
+                    "name": "信用代码",
+                    "type": "string",
+                    "required": True,
+                }
+            },
+        }
+    }
+    scripted = ScriptedExtractor(
+        {
+            "entities": [
+                {
+                    "ref": "e1",
+                    "class_code": "person",
+                    "name": "张伟",
+                    "confidence": 0.9,
+                    "evidence_block_ids": ["b1"],
+                    "attributes": {"ghost": "未定义属性"},
+                }
+            ],
+            "relations": [],
+        }
+    )
+    set_extractor(scripted)
+    calls, writer = _capture_writer()
+    set_candidate_writer(writer)
+
+    result = run_extract_pipeline(_state(classes=classes, relations={}))
+
+    # 属性问题都是非阻塞的：不触发修复，候选照常落库
+    assert scripted.calls == 1
+    assert result["stats"]["entities"] == 1
+    counts = result["stats"]["issue_counts"]
+    assert counts["attr_unknown"] == 1
+    assert counts["attr_required_missing"] == 1
+    assert calls[0]["entities"][0]["attributes"] == {}
+
+
 def test_repair_extraction_drops_unknown_types_and_keeps_valid() -> None:
     raw = {
         "entities": [

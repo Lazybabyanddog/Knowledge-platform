@@ -13,6 +13,8 @@ export const parseApi = {
   }) => http.post<ParseStrategy>('/parse-strategies', body),
   updateStrategy: (id: string, body: Record<string, unknown>) =>
     http.patch<ParseStrategy>(`/parse-strategies/${id}`, body),
+  deleteStrategy: (id: string) =>
+    http.delete<{ deleted: boolean; disabled_versions: number }>(`/parse-strategies/${id}`),
 
   trigger: (body: { document_version_id: string; strategy_id?: string | null }) =>
     http.post<ParseTask>('/parse-tasks', body),
@@ -20,6 +22,7 @@ export const parseApi = {
   taskDetail: (id: string) => http.get<ParseTaskDetail>(`/parse-tasks/${id}`),
   retry: (id: string) => http.post<ParseTask>(`/parse-tasks/${id}/retry`),
   cancel: (id: string) => http.post<ParseTask>(`/parse-tasks/${id}/cancel`),
+  deleteTask: (id: string) => http.delete<{ deleted: boolean }>(`/parse-tasks/${id}`),
   blocks: (id: string, params: Record<string, unknown>) =>
     http.get<Page<ParseBlock>>(`/parse-tasks/${id}/blocks`, params),
 }

@@ -71,6 +71,19 @@ def update_strategy(
     )
 
 
+@strategies_router.delete("/{strategy_id}", summary="删除策略（停用全部版本）")
+def delete_strategy(
+    strategy_id: uuid.UUID,
+    request: Request,
+    principal: AdminPrincipal,
+    db: DbSession,
+) -> dict[str, object]:
+    disabled = ParseStrategyService(db).delete_strategy(
+        principal, strategy_id, ip=client_ip(request)
+    )
+    return {"deleted": True, "disabled_versions": disabled}
+
+
 @tasks_router.post("", response_model=ParseTaskItem, status_code=202, summary="触发解析")
 def trigger_parse(
     payload: ParseTaskCreateRequest,
@@ -118,6 +131,17 @@ def cancel_parse_task(
 ) -> ParseTaskItem:
     task = ParseTaskService(db).cancel(principal, task_id, ip=client_ip(request))
     return task_item(task)
+
+
+@tasks_router.delete("/{task_id}", summary="删除解析任务")
+def delete_parse_task(
+    task_id: uuid.UUID,
+    request: Request,
+    principal: WritePrincipal,
+    db: DbSession,
+) -> dict[str, bool]:
+    ParseTaskService(db).delete(principal, task_id, ip=client_ip(request))
+    return {"deleted": True}
 
 
 @tasks_router.get(

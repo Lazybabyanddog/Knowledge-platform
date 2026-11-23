@@ -20,10 +20,11 @@ from app.core.deps import Principal
 from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.domain import state_machines
 from app.domain.enums import AuditAction, EntityStatus
-from app.domain.knowledge import normalize_name
-from app.infra.db.models import Document, DocumentVersion
+from app.domain.knowledge import KIND_NAME, identity_key, normalize_name
+from app.infra.db.models import Document, DocumentVersion, OntologyRelation
 from app.infra.db.repositories import ParseBlockRepository
 from app.infra.graph.entity_repository import EntityRepository
+from app.pipelines.extract.validators import coerce_attributes
 from app.schemas.knowledge import (
     EntityItem,
     EntityListResponse,
@@ -38,6 +39,7 @@ from app.schemas.knowledge import (
     RelationItem,
     RelationListResponse,
     RelationQuery,
+    RelationUpdateRequest,
     SubgraphEdge,
     SubgraphResponse,
 )
@@ -68,6 +70,8 @@ def entity_item(row: dict[str, Any]) -> EntityItem:
         document_ids=list(row.get("document_ids") or []),
         evidence_block_ids=list(row.get("evidence_block_ids") or []),
         attributes=dict(row.get("attributes") or {}),
+        identity_kind=row.get("identity_kind"),
+        identity_key=row.get("identity_key"),
         created_at=_ms_to_dt(row.get("created_at_ms")),
         updated_at=_ms_to_dt(row.get("updated_at_ms")),
     )
@@ -82,6 +86,10 @@ def relation_item(row: dict[str, Any]) -> RelationItem:
         confidence=float(row.get("confidence") or 0.0),
         status=row.get("status") or EntityStatus.PROPOSED.value,
         evidence_block_id=row.get("evidence_block_id"),
+        evidence_text=row.get("evidence_text"),
+        evidence_key=row.get("evidence_key"),
+        attributes=dict(row.get("attributes") or {}),
+        description=row.get("description"),
         document_id=row.get("document_id"),
         extraction_task_id=row.get("extraction_task_id"),
         reject_reason=row.get("reject_reason"),
@@ -359,6 +367,59 @@ class KnowledgeService:
             ip=ip,
         )
 
+    def update_relation(
+        self,
+        principal: Principal,
+        relation_id: str,
+        payload: RelationUpdateRequest,
+        *,
+        ip: str | None = None,
+    ) -> RelationItem:
+        """人工修正关系的属性与描述。
+
+        两端与类型是抽取事实，不允许改写：改了就等于伪造一条原文里不存在的关系。
+        已驳回的关系不再接受修改（要改先确认），属性按关系类型的 ``AttributeDef`` 强转。
+        """
+        row = self._relation(principal, relation_id)
+        if row["status"] == EntityStatus.REJECTED.value:
+            raise ConflictError(
+                "已驳回的关系不能修改，请先确认该关系",
+                data={"relation_id": relation_id, "status": row["status"]},
+            )
+        if payload.attributes is None and payload.description is None:
+            return relation_item(row)
+
+        attributes_json = json.dumps(
+            self._relation_attributes(principal, row, payload.attributes),
+            ensure_ascii=False,
+        )
+        updated = self.graph.update_relation_attributes(
+            str(principal.user.workspace_id),
+            relation_id,
+            attributes_json=attributes_json,
+            description=payload.description,
+        )
+        if updated is None:
+            raise NotFoundError("关系不存在")
+
+        self.audit.record(
+            AuditAction.RELATION_UPDATE,
+            actor=principal.user,
+            object_type="relation",
+            object_id=relation_id,
+            before={
+                "attributes": dict(row.get("attributes") or {}),
+                "description": row.get("description"),
+            },
+            after={
+                "attributes": dict(updated.get("attributes") or {}),
+                "description": updated.get("description"),
+            },
+            ip=ip,
+        )
+        self.db.commit()
+        return relation_item(updated)
+
     # ------------------------------------------------------------------ #
     # 子图与来源
     # ------------------------------------------------------------------ #
@@ -496,11 +557,38 @@ class KnowledgeService:
                 normalized_name=normalize_name(new_name),
                 aliases=aliases,
             )
+            if (row.get("identity_kind") or KIND_NAME) == KIND_NAME:
+                # 名称身份要跟着新名字走，否则按新名称再抽一次会长出第二个节点；
+                # 标识身份与名称无关（证号没变），改名时保持原键不动。
+                props.update(
+                    identity_kind=KIND_NAME,
+                    identity_key=identity_key(KIND_NAME, normalize_name(new_name)),
+                )
         if payload.description is not None:
             props["description"] = payload.description
         if payload.attributes is not None:
             props["attributes_json"] = json.dumps(payload.attributes, ensure_ascii=False)
         return props
+
+    def _relation_attributes(
+        self,
+        principal: Principal,
+        row: dict[str, Any],
+        attributes: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        """按关系类型的属性定义强转人工输入；类型已失效时原样保留用户输入。"""
+        if attributes is None:
+            return dict(row.get("attributes") or {})
+        definition = self.db.execute(
+            select(OntologyRelation.attributes).where(
+                OntologyRelation.workspace_id == principal.user.workspace_id,
+                OntologyRelation.code == str(row.get("code") or ""),
+            )
+        ).scalar_one_or_none()
+        if not definition:
+            return dict(attributes)
+        cleaned, _ = coerce_attributes(attributes, definition)
+        return cleaned
 
     def _review_relation(
         self,

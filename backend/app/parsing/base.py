@@ -16,6 +16,9 @@ from app.domain.enums import BlockType
 class ParseError(Exception):
     """引擎内部失败：worker 捕获后把任务置为失败并记录原因。"""
 
+    # 对外错误码：非重试类，重试只会重复同样的失败
+    task_error_code = "parse_error"
+
 
 class UnknownEngineError(ParseError):
     """策略引用了未注册的引擎，触发解析前就应拦截。"""

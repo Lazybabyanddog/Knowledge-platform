@@ -13,12 +13,14 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.infra.db.models import (
     AppUser,
+    AuditLog,
+    DocumentVersion,
     ParseBlock,
     ParseStrategy,
     ParseTask,
@@ -391,21 +393,36 @@ def test_failed_task_retry_limit_keeps_attempt_history(
     failed = _get_task(client, auth_headers, task_id)
     assert failed["status"] == "failed"
     assert failed["error_code"] == "parse_error"
+    assert failed["error"]["message"] == "解析失败"
     assert "老格式" in failed["error_message"]
+    # 解析失败属于不可重试类：不自动重排，直接等人工决定
+    assert failed["auto_retries"] == 0
+    assert failed["actions"]["can_revive"] is True
+    assert failed["actions"]["can_skip_failed_batches"] is False
 
-    for expected_attempt in (2, 3):
+    for expected_attempt, expected_revives in ((2, 1), (3, 2)):
         retried = client.post(f"{TASKS}/{task_id}/retry", headers=auth_headers)
         assert retried.status_code == 200, retried.text
-        assert _get_task(client, auth_headers, task_id)["attempt"] == expected_attempt
+        detail = _get_task(client, auth_headers, task_id)
+        assert detail["attempt"] == expected_attempt
+        assert detail["manual_revives"] == expected_revives
 
     exhausted = client.post(f"{TASKS}/{task_id}/retry", headers=auth_headers)
     assert exhausted.status_code == 409
     assert exhausted.json()["data"]["attempt"] == 3
+    assert exhausted.json()["data"]["manual_revives"] == 2
 
     detail = _get_task(client, auth_headers, task_id)
-    assert [item["attempt_no"] for item in detail["attempts"]] == [1, 2, 3]
+    # 展示按时间倒序：最近的执行在最前面
+    assert [item["attempt_no"] for item in detail["attempts"]] == [3, 2, 1]
     assert all(item["status"] == "failed" for item in detail["attempts"])
     assert all(item["error_code"] == "parse_error" for item in detail["attempts"])
+    assert [item["source"] for item in detail["attempts"]] == [
+        "manual_revive",
+        "manual_revive",
+        "manual",
+    ]
+    assert detail["actions"]["can_revive"] is False
 
     db_session = SessionLocal()
     try:
@@ -439,13 +456,20 @@ def test_cancel_pending_task_and_illegal_transitions(
     assert cancelled.status_code == 200, cancelled.text
     assert cancelled.json()["data"]["status"] == "cancelled"
 
-    # 状态机允许同态重复（幂等），但终态不能再被重试
+    # 状态机允许同态重复（幂等）
     again = client.post(f"{TASKS}/{task_id}/cancel", headers=auth_headers)
     assert again.status_code == 200
     assert again.json()["data"]["status"] == "cancelled"
-    assert client.post(f"{TASKS}/{task_id}/retry", headers=auth_headers).status_code == 409
 
-    # 已取消的任务被投递到 worker 时直接跳过，不产生 attempt
+    # 取消是"可人工恢复的终态"：继续执行回到 pending，消耗人工预算而非自动预算
+    revived = client.post(f"{TASKS}/{task_id}/retry", headers=auth_headers)
+    assert revived.status_code == 200, revived.text
+    assert revived.json()["data"]["status"] == "pending"
+    assert revived.json()["data"]["manual_revives"] == 1
+    assert revived.json()["data"]["auto_retries"] == 0
+
+    # 再取消一次，已取消的任务被投递到 worker 时直接跳过，不产生 attempt
+    client.post(f"{TASKS}/{task_id}/cancel", headers=auth_headers)
     session = SessionLocal()
     try:
         ParseTaskService(session).execute(uuid.UUID(task_id))
@@ -583,6 +607,131 @@ def test_task_query_rejects_bad_document_id(
 
     assert resp.status_code == 400
     assert "UUID" in resp.json()["message"]
+
+
+def test_delete_task_removes_products_and_resets_index(
+    client: TestClient,
+    db: Session,
+    auth_headers: dict[str, str],
+    cleanup_document: list[uuid.UUID],
+    parse_cleanup: dict[str, list[str]],
+) -> None:
+    strategy = _create_strategy(client, auth_headers, parse_cleanup)
+    document = _upload(client, auth_headers, cleanup_document)
+    _, body = _trigger(client, auth_headers, document, parse_cleanup, strategy["id"])
+    task_id = uuid.UUID(body["data"]["id"])
+    detail = _get_task(client, auth_headers, str(task_id))
+    assert detail["status"] == "succeeded"
+    assert detail["block_count"] > 0
+
+    resp = client.delete(f"{TASKS}/{task_id}", headers=auth_headers)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["data"] == {"deleted": True}
+
+    assert client.get(f"{TASKS}/{task_id}", headers=auth_headers).status_code == 404
+    assert client.delete(f"{TASKS}/{task_id}", headers=auth_headers).status_code == 404
+
+    db.rollback()
+    assert db.get(ParseTask, task_id) is None
+    assert (
+        db.scalar(
+            select(func.count())
+            .select_from(ParseBlock)
+            .where(ParseBlock.parse_task_id == task_id)
+        )
+        == 0
+    )
+    assert (
+        db.scalar(
+            select(func.count())
+            .select_from(ParseTaskAttempt)
+            .where(ParseTaskAttempt.parse_task_id == task_id)
+        )
+        == 0
+    )
+    # 产物已删，版本索引失效
+    version = db.get(DocumentVersion, uuid.UUID(document["current_version_id"]))
+    assert version is not None
+    assert version.index_status == "pending"
+    assert version.chunk_count == 0
+
+    audit = db.scalars(
+        select(AuditLog).where(
+            AuditLog.action == "parse.task_delete", AuditLog.object_id == str(task_id)
+        )
+    ).one()
+    assert audit.before["status"] == "succeeded"
+
+
+def test_delete_running_task_requires_cancel_first(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    cleanup_document: list[uuid.UUID],
+    parse_cleanup: dict[str, list[str]],
+) -> None:
+    set_dispatcher(lambda _: None)
+    strategy = _create_strategy(client, auth_headers, parse_cleanup)
+    document = _upload(client, auth_headers, cleanup_document)
+    _, body = _trigger(client, auth_headers, document, parse_cleanup, strategy["id"])
+    task_id = body["data"]["id"]
+
+    blocked = client.delete(f"{TASKS}/{task_id}", headers=auth_headers)
+    assert blocked.status_code == 409
+    assert "进行中" in blocked.json()["message"]
+
+    client.post(f"{TASKS}/{task_id}/cancel", headers=auth_headers)
+    allowed = client.delete(f"{TASKS}/{task_id}", headers=auth_headers)
+    assert allowed.status_code == 200, allowed.text
+
+
+def test_strategy_delete_disables_all_versions(
+    client: TestClient,
+    db: Session,
+    auth_headers: dict[str, str],
+    role_headers: Callable[[list[str]], dict[str, str]],
+    parse_cleanup: dict[str, list[str]],
+) -> None:
+    strategy = _create_strategy(
+        client, auth_headers, parse_cleanup, name="待删除策略", is_default=False
+    )
+    patched = client.patch(
+        f"{STRATEGIES}/{strategy['id']}",
+        headers=auth_headers,
+        json={"config": {"chunk_hint": 800}},
+    )
+    assert patched.status_code == 200
+    latest = patched.json()["data"]
+    assert latest["version"] == 2
+
+    contributor = role_headers(["contributor"])
+    assert (
+        client.delete(f"{STRATEGIES}/{strategy['id']}", headers=contributor).status_code == 403
+    )
+
+    resp = client.delete(f"{STRATEGIES}/{strategy['id']}", headers=auth_headers)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["data"] == {"deleted": True, "disabled_versions": 2}
+
+    listed = client.get(STRATEGIES, headers=auth_headers).json()["data"]["items"]
+    assert strategy["strategy_key"] not in {item["strategy_key"] for item in listed}
+
+    # 历史版本行仍在，任务可继续追溯执行时的策略
+    db.rollback()
+    rows = list(
+        db.scalars(
+            select(ParseStrategy)
+            .where(ParseStrategy.strategy_key == strategy["strategy_key"])
+            .order_by(ParseStrategy.version)
+        )
+    )
+    assert [row.version for row in rows] == [1, 2]
+    assert all(row.status == "disabled" for row in rows)
+    assert all(row.is_default is False for row in rows)
+
+    # 幂等：再次删除不报错
+    assert (
+        client.delete(f"{STRATEGIES}/{strategy['id']}", headers=auth_headers).status_code == 200
+    )
 
 
 def test_task_rows_are_owned_by_workspace(

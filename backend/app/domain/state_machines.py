@@ -89,7 +89,8 @@ PARSE_TASK = StateMachine(
         ),
         enums.ParseTaskStatus.FAILED.value: _fs(enums.ParseTaskStatus.PENDING.value),
         enums.ParseTaskStatus.SUCCEEDED.value: _fs(),
-        enums.ParseTaskStatus.CANCELLED.value: _fs(),
+        # 取消是"可人工恢复的终态"：看护永不复活，用户可以从断点接着跑
+        enums.ParseTaskStatus.CANCELLED.value: _fs(enums.ParseTaskStatus.PENDING.value),
     },
 )
 
@@ -108,7 +109,8 @@ EXTRACTION_TASK = StateMachine(
         ),
         enums.ExtractionTaskStatus.FAILED.value: _fs(enums.ExtractionTaskStatus.PENDING.value),
         enums.ExtractionTaskStatus.SUCCEEDED.value: _fs(),
-        enums.ExtractionTaskStatus.CANCELLED.value: _fs(),
+        # 取消是"可人工恢复的终态"：看护永不复活，用户可以从断点接着跑
+        enums.ExtractionTaskStatus.CANCELLED.value: _fs(enums.ExtractionTaskStatus.PENDING.value),
     },
 )
 

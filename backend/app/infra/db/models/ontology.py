@@ -12,10 +12,12 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
     Integer,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -34,6 +36,7 @@ class OntologyClass(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "ontology_class"
     __table_args__ = (
         UniqueConstraint("workspace_id", "code", name="uq_ontology_class_code"),
+        CheckConstraint("status IN (0, 1)", name="ck_ontology_class_status"),
         Index("ix_ontology_class_parent", "parent_id"),
         Index("ix_ontology_class_workspace", "workspace_id", "status"),
     )
@@ -50,12 +53,15 @@ class OntologyClass(UUIDPrimaryKeyMixin, Base):
     attributes: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
     )
+    identity_keys: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
-    status: Mapped[str] = mapped_column(
-        String(16),
+    status: Mapped[int] = mapped_column(
+        SmallInteger,
         nullable=False,
-        default=OntologyStatus.ACTIVE.value,
-        server_default=OntologyStatus.ACTIVE.value,
+        default=OntologyStatus.VALID.value,
+        server_default="0",
     )
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("app_user.id", ondelete="SET NULL")
@@ -72,6 +78,7 @@ class OntologyRelation(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "ontology_relation"
     __table_args__ = (
         UniqueConstraint("workspace_id", "code", name="uq_ontology_relation_code"),
+        CheckConstraint("status IN (0, 1)", name="ck_ontology_relation_status"),
         Index("ix_ontology_relation_source", "workspace_id", "source_class_id"),
         Index("ix_ontology_relation_target", "workspace_id", "target_class_id"),
     )
@@ -88,12 +95,15 @@ class OntologyRelation(UUIDPrimaryKeyMixin, Base):
     target_class_id: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("ontology_class.id", ondelete="RESTRICT")
     )
+    attributes: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
-    status: Mapped[str] = mapped_column(
-        String(16),
+    status: Mapped[int] = mapped_column(
+        SmallInteger,
         nullable=False,
-        default=OntologyStatus.ACTIVE.value,
-        server_default=OntologyStatus.ACTIVE.value,
+        default=OntologyStatus.VALID.value,
+        server_default="0",
     )
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("app_user.id", ondelete="SET NULL")

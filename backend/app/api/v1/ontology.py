@@ -64,6 +64,17 @@ def update_class(
     return OntologyService(db).update_class(principal, class_id, payload, ip=client_ip(request))
 
 
+@router.delete("/classes/{class_id}", summary="删除实体类")
+def delete_class(
+    class_id: uuid.UUID,
+    request: Request,
+    principal: ManagePrincipal,
+    db: DbSession,
+) -> dict[str, bool]:
+    OntologyService(db).delete_class(principal, class_id, ip=client_ip(request))
+    return {"deleted": True}
+
+
 @router.get("/relations", response_model=OntologyRelationListResponse, summary="关系类型列表")
 def list_relations(
     principal: ReadPrincipal,
@@ -98,6 +109,17 @@ def update_relation(
     return OntologyService(db).update_relation(
         principal, relation_id, payload, ip=client_ip(request)
     )
+
+
+@router.delete("/relations/{relation_id}", summary="删除关系类型")
+def delete_relation(
+    relation_id: uuid.UUID,
+    request: Request,
+    principal: ManagePrincipal,
+    db: DbSession,
+) -> dict[str, bool]:
+    OntologyService(db).delete_relation(principal, relation_id, ip=client_ip(request))
+    return {"deleted": True}
 
 
 @router.post("/sync", summary="重放本体到图库")

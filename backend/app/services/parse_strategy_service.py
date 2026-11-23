@@ -159,6 +159,45 @@ class ParseStrategyService:
         self.db.commit()
         return _item(new_version)
 
+    def delete_strategy(
+        self,
+        principal: Principal,
+        strategy_id: uuid.UUID,
+        *,
+        ip: str | None = None,
+    ) -> int:
+        """停用整组策略版本。
+
+        ``parse_task.strategy_id`` 是 RESTRICT，历史任务必须能追溯执行时的策略，
+        因此这里只做逻辑删除：全部版本置为 disabled 并让出默认标记，列表随之不可见。
+        返回被停用的版本数。
+        """
+        current = self._get_or_404(principal, strategy_id)
+        workspace_id = principal.user.workspace_id
+        versions = self.strategies.list_by_key(workspace_id, current.strategy_key)
+        if not versions:  # pragma: no cover - 数据完整性兜底
+            raise NotFoundError("策略版本不存在")
+
+        for row in versions:
+            row.status = StrategyStatus.DISABLED.value
+            row.is_default = False
+
+        self.audit.record(
+            AuditAction.PARSE_STRATEGY_DELETE,
+            actor=principal.user,
+            workspace_id=workspace_id,
+            object_type="parse_strategy",
+            object_id=current.id,
+            before=_snapshot(current),
+            after={
+                "strategy_key": current.strategy_key,
+                "disabled_versions": [row.version for row in versions],
+            },
+            ip=ip,
+        )
+        self.db.commit()
+        return len(versions)
+
     def resolve_for_document(
         self, workspace_id: uuid.UUID, doc_type: str, strategy_id: str | None
     ) -> ParseStrategy:

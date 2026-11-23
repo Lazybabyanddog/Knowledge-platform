@@ -87,6 +87,17 @@ def update_flow(
     return ReviewService(db).update_flow(principal, flow_id, payload)
 
 
+@flows_router.delete("/{flow_id}", summary="删除审批流（管理员）")
+def delete_flow(
+    flow_id: uuid.UUID,
+    request: Request,
+    principal: FlowAdmin,
+    db: DbSession,
+) -> dict[str, bool]:
+    ReviewService(db).delete_flow(principal, flow_id, ip=client_ip(request))
+    return {"deleted": True}
+
+
 # --------------------------------------------------------------------------- #
 # 提交与审批动作
 # --------------------------------------------------------------------------- #

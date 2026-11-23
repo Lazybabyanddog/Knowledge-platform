@@ -108,6 +108,47 @@ def _submit(
     )
 
 
+def test_flow_delete_keeps_instance_snapshot(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    role_headers: Any,
+    cleanup_flow: list[uuid.UUID],
+) -> None:
+    flow = _create_flow(client, auth_headers, cleanup_flow, is_default=True)
+    document = _upload(client, auth_headers)
+    submitted = _submit(
+        client,
+        auth_headers,
+        document_id=document["id"],
+        version_id=document["current_version_id"],
+        flow_id=flow["id"],
+    )
+    assert submitted.status_code == 201, submitted.text
+    instance_id = submitted.json()["data"]["id"]
+
+    reviewer = role_headers(["reviewer"])
+    assert client.delete(f"{FLOWS}/{flow['id']}", headers=reviewer).status_code == 403
+
+    resp = client.delete(f"{FLOWS}/{flow['id']}", headers=auth_headers)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["data"] == {"deleted": True}
+    assert client.get(f"{FLOWS}/{flow['id']}", headers=auth_headers).status_code == 404
+    assert client.delete(f"{FLOWS}/{flow['id']}", headers=auth_headers).status_code == 404
+
+    names = {
+        item["name"] for item in client.get(FLOWS, headers=auth_headers).json()["data"]["items"]
+    }
+    assert flow["name"] not in names
+
+    # 已提交实例按快照继续流转，不因流程删除而中断
+    detail = client.get(f"{REVIEWS}/{instance_id}", headers=auth_headers)
+    assert detail.status_code == 200, detail.text
+    body = detail.json()["data"]
+    assert body["status"] == "pending"
+    assert body["flow_id"] is None
+    assert body["flow_name"] == flow["name"]
+
+
 def test_flow_default_is_exclusive_and_admin_only(
     client: TestClient,
     auth_headers: dict[str, str],
