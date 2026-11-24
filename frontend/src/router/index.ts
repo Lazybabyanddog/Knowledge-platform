@@ -73,6 +73,12 @@ export const appRoutes: RouteRecordRaw[] = [
         meta: { title: '解析策略', group: '知识资产', permission: 'document:read' },
       },
       {
+        path: 'rewrite-lab',
+        name: 'rewrite-lab',
+        component: () => import('@/views/RewriteLabView.vue'),
+        meta: { title: '改写实验室', group: '知识资产', permission: 'document:read' },
+      },
+      {
         path: 'ontology',
         name: 'ontology',
         component: () => import('@/views/OntologyView.vue'),
@@ -91,6 +97,12 @@ export const appRoutes: RouteRecordRaw[] = [
         meta: { title: '图谱浏览', group: '知识治理', permission: 'graph:read' },
       },
       {
+        path: 'qa/issues',
+        name: 'qa-triage',
+        component: () => import('@/views/QaTriageView.vue'),
+        meta: { title: '问答治理', group: '知识治理', permission: 'qa:manage' },
+      },
+      {
         path: 'reviews',
         name: 'reviews',
         component: () => import('@/views/ReviewsView.vue'),
@@ -107,6 +119,18 @@ export const appRoutes: RouteRecordRaw[] = [
         name: 'users',
         component: () => import('@/views/UsersView.vue'),
         meta: { title: '用户管理', group: '系统', permission: 'user:manage' },
+      },
+      {
+        path: 'departments',
+        name: 'departments',
+        component: () => import('@/views/DepartmentsView.vue'),
+        meta: { title: '部门管理', group: '系统', permission: 'department:manage' },
+      },
+      {
+        path: 'roles',
+        name: 'roles',
+        component: () => import('@/views/RolesView.vue'),
+        meta: { title: '角色管理', group: '系统', permission: 'role:manage' },
       },
       {
         path: '403',
@@ -138,6 +162,9 @@ router.beforeEach(async (to) => {
       auth.clear()
       return { path: '/login', query: { redirect: to.fullPath } }
     }
+  }
+  if (!(await auth.ensurePermissions())) {
+    return { path: '/login', query: { redirect: to.fullPath } }
   }
   if (to.meta.adminOnly && !auth.isAdmin) {
     return { path: '/403' }

@@ -31,7 +31,7 @@ docker compose up -d                 # PostgreSQL / Redis / Neo4j / MinIO
 conda activate ai_platform
 cd backend
 alembic upgrade head                 # 建表
-python -m app.scripts.seed           # 种子数据（管理员、角色、默认解析策略）
+python -m app.scripts.seed           # 种子数据（管理员、权限目录与内置角色授权、默认解析策略；可重复执行）
 uvicorn app.main:app --reload        # API: http://127.0.0.1:8000/docs
 celery -A app.workers.celery_app:celery_app worker -Q parse -l info   # 解析 + 抽取 worker
 ```
@@ -130,6 +130,35 @@ POST   /api/v1/reviews/<instance_id>/withdraw        # 仅提交人，仅未结�
 最后一步批准后由服务层把 `is_current` 切到被审版本并发布文档；驳回后文档转 `rejected` 并解冻，
 撤回后回到 `draft`。同一人重复批准同一实例返回 409，非当前步骤审批人返回 403；
 待办列表按提交时间正序返回，当前步骤停留超过 3 个工作日标记 `overdue` 并给出 `waiting_workdays`。
+
+## 组织、角色与文档归属
+
+部门是邻接表树（`department.parent_id`，最多 5 层），人员（`app_user.department_id`）只属于一个部门；
+角色与权限全部落库（`role` / `permission` / `role_permission`），内置 4 个角色受 `is_system` 保护，
+可新建自定义角色并勾选权限。**权限不再写在前端**：登录后 `GET /api/v1/auth/me` 下发 `permissions`，
+后端每次请求都现查库，改权限即时生效、无需重新登录。
+
+```bash
+GET    /api/v1/departments                     # user:manage 或 department:manage
+POST   /api/v1/departments                     {"name": "技术中心", "parent_id": null, "sort_order": 0}
+PATCH  /api/v1/departments/<id>                # 改名 / 移动 / 调序；成环或超过 5 层返回 400
+DELETE /api/v1/departments/<id>                # 有子部门或人员时返回 409
+
+GET    /api/v1/roles                           # role:manage
+GET    /api/v1/roles/permissions               # 按分组返回权限目录
+POST   /api/v1/roles                           {"code": "auditor", "name": "审核员", "permissions": ["document:read", "review:approve"]}
+PATCH  /api/v1/roles/<id>                      # 编码不可改；内置角色不可删
+DELETE /api/v1/roles/<id>                      # 内置 400，仍被人员或审批流引用时 409
+
+GET    /api/v1/users?department_id=<id>        # 按部门筛选，自动含下级部门
+GET    /api/v1/documents?department_id=<id>    # 按上传人所属部门筛选，同样含下级
+```
+
+文档列表与详情返回 `created_by_name` / `created_by_department_id` / `created_by_department_name`，
+版本历史返回每版 `created_by_name`。归属取**上传人当前档案**（实时 join，不做快照），因此人员换部门后归属跟着变，
+停用后仍显示姓名；负责人（`owner_id`）与上传人是两个字段，转移负责人不影响归属。
+
+前端入口：系统 → 部门管理 / 角色管理 / 用户管理；上传人筛选项在文档库工具栏。
 
 ## HTML 文档解析
 

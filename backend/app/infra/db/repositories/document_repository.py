@@ -8,7 +8,7 @@ from datetime import datetime
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
-from app.infra.db.models import Document, DocumentVersion
+from app.infra.db.models import AppUser, Department, Document, DocumentVersion
 
 
 class DocumentRepository:
@@ -43,6 +43,7 @@ class DocumentRepository:
         tag: str | None = None,
         sensitivity: str | None = None,
         owner_id: uuid.UUID | None = None,
+        department_ids: list[uuid.UUID] | None = None,
         created_from: datetime | None = None,
         created_to: datetime | None = None,
         include_deleted: bool = False,
@@ -64,6 +65,13 @@ class DocumentRepository:
             conditions.append(Document.sensitivity == sensitivity)
         if owner_id is not None:
             conditions.append(Document.owner_id == owner_id)
+        if department_ids is not None:
+            # 归属取上传人当前部门，筛选范围含下级部门
+            conditions.append(
+                Document.created_by.in_(
+                    select(AppUser.id).where(AppUser.department_id.in_(department_ids))
+                )
+            )
         if created_from is not None:
             conditions.append(Document.created_at >= created_from)
         if created_to is not None:
@@ -83,6 +91,22 @@ class DocumentRepository:
             .limit(page_size)
         ).all()
         return list(rows), int(total or 0)
+
+    # ---- 上传人归属 ----
+    def attribution_map(
+        self, user_ids: list[uuid.UUID]
+    ) -> dict[uuid.UUID, tuple[str | None, uuid.UUID | None, str | None]]:
+        """一次性取回 (姓名, 部门 id, 部门名)，避免列表页 N+1 查询。"""
+
+        ids = [user_id for user_id in dict.fromkeys(user_ids) if user_id]
+        if not ids:
+            return {}
+        rows = self.db.execute(
+            select(AppUser.id, AppUser.display_name, AppUser.department_id, Department.name)
+            .outerjoin(Department, Department.id == AppUser.department_id)
+            .where(AppUser.id.in_(ids))
+        ).all()
+        return {row[0]: (row[1], row[2], row[3]) for row in rows}
 
     # ---- 版本 ----
     def add_version(self, version: DocumentVersion) -> DocumentVersion:

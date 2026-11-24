@@ -11,13 +11,14 @@ from collections.abc import Callable, Iterator
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.security import hash_password
 from app.domain.enums import UserStatus
 from app.infra.cache.redis_client import get_redis
-from app.infra.db.models import AppUser, Document, DocumentVersion
+from app.infra.db.models import AppUser, Department, Document, DocumentVersion
 from app.infra.db.repositories import UserRepository
 from app.infra.db.session import SessionLocal
 from app.infra.graph.driver import apply_schema, graph_session
@@ -102,6 +103,41 @@ def make_user(
         return user
 
     yield _make
+
+
+@pytest.fixture
+def department_tree(
+    client: TestClient, auth_headers: dict[str, str], db: Session
+) -> Iterator[dict[str, dict]]:
+    """建两级测试部门（研发中心 / 文档组），结束后解绑人员并按子→父删除。"""
+    suffix = uuid.uuid4().hex[:6]
+    root_resp = client.post(
+        "/api/v1/departments", headers=auth_headers, json={"name": f"研发中心{suffix}"}
+    )
+    assert root_resp.status_code == 201, root_resp.text
+    root = root_resp.json()["data"]
+    child_resp = client.post(
+        "/api/v1/departments",
+        headers=auth_headers,
+        json={"name": f"文档组{suffix}", "parent_id": root["id"]},
+    )
+    assert child_resp.status_code == 201, child_resp.text
+    child = child_resp.json()["data"]
+
+    yield {"root": root, "child": child}
+
+    root_id, child_id = uuid.UUID(root["id"]), uuid.UUID(child["id"])
+    db.execute(
+        update(AppUser)
+        .where(AppUser.department_id.in_([root_id, child_id]))
+        .values(department_id=None)
+    )
+    for department_id in (child_id, root_id):
+        row = db.get(Department, department_id)
+        if row is not None:
+            db.delete(row)
+            db.flush()
+    db.commit()
 
 
 @pytest.fixture

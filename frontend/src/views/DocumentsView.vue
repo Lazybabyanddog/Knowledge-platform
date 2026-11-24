@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
+import { departmentApi } from '@/api/departments'
 import { documentApi } from '@/api/documents'
 import { errorMessage } from '@/api/http'
-import type { DocumentItem } from '@/api/types'
+import type { DepartmentItem, DocumentItem } from '@/api/types'
 import { useAuthStore } from '@/stores/auth'
+import { flattenDepartments } from '@/utils/departments'
 import {
   DOCUMENT_STATUS,
   DOC_TYPE,
@@ -22,14 +24,27 @@ const auth = useAuthStore()
 const loading = ref(false)
 const rows = ref<DocumentItem[]>([])
 const total = ref(0)
+const departments = ref<DepartmentItem[]>([])
 const query = reactive({
   keyword: '',
   status: '',
   sensitivity: '',
+  department_id: '',
   include_deleted: false,
   page: 1,
   page_size: 10,
 })
+
+const departmentOptions = computed(() => flattenDepartments(departments.value))
+
+async function loadDepartments(): Promise<void> {
+  try {
+    const data = await departmentApi.list()
+    departments.value = data.items
+  } catch {
+    departments.value = []
+  }
+}
 
 const statusOptions = Object.entries(DOCUMENT_STATUS).map(([value, meta]) => ({
   value,
@@ -47,6 +62,7 @@ async function load(): Promise<void> {
       keyword: query.keyword || undefined,
       status: query.status || undefined,
       sensitivity: query.sensitivity || undefined,
+      department_id: query.department_id || undefined,
       include_deleted: query.include_deleted || undefined,
       page: query.page,
       page_size: query.page_size,
@@ -69,6 +85,7 @@ function reset(): void {
   query.keyword = ''
   query.status = ''
   query.sensitivity = ''
+  query.department_id = ''
   query.include_deleted = false
   search()
 }
@@ -115,7 +132,10 @@ async function restore(row: DocumentItem): Promise<void> {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  void load()
+  void loadDepartments()
+})
 </script>
 
 <template>
@@ -149,6 +169,21 @@ onMounted(load)
         <el-select v-model="query.sensitivity" placeholder="全部密级" clearable style="width: 132px">
           <el-option
             v-for="item in sensitivityOptions"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
+          />
+        </el-select>
+        <el-select
+          v-model="query.department_id"
+          placeholder="全部部门"
+          clearable
+          filterable
+          style="width: 172px"
+          @change="search"
+        >
+          <el-option
+            v-for="item in departmentOptions"
             :key="item.value"
             :label="item.label"
             :value="item.value"
@@ -201,6 +236,17 @@ onMounted(load)
             <el-tag :type="statusMeta(SENSITIVITY, row.sensitivity).tone" size="small" effect="plain">
               {{ statusMeta(SENSITIVITY, row.sensitivity).label }}
             </el-tag>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="上传人" min-width="130">
+          <template #default="{ row }: { row: DocumentItem }">
+            <span>{{ row.created_by_name ?? '—' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="部门" min-width="130">
+          <template #default="{ row }: { row: DocumentItem }">
+            <span class="muted small">{{ row.created_by_department_name ?? '未分配部门' }}</span>
           </template>
         </el-table-column>
 

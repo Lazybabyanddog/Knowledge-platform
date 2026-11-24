@@ -13,6 +13,8 @@ export interface DocumentQueryParams {
   tag?: string
   sensitivity?: string
   owner_id?: string
+  /** 按上传人所属部门筛选，含下级部门 */
+  department_id?: string
   created_from?: string
   created_to?: string
   sort_by?: 'created_at' | 'updated_at'

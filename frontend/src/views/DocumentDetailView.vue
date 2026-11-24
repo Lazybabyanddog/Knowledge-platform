@@ -556,6 +556,12 @@ onUnmounted(() => {
                 {{ DOC_TYPE[doc?.doc_type ?? ''] ?? doc?.doc_type ?? '—' }}
               </el-descriptions-item>
               <el-descriptions-item label="来源">{{ doc?.source_type ?? '—' }}</el-descriptions-item>
+              <el-descriptions-item label="上传人">
+                {{ doc?.created_by_name ?? '—' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="所属部门">
+                {{ doc?.created_by_department_name ?? '未分配部门' }}
+              </el-descriptions-item>
               <el-descriptions-item label="当前版本">
                 v{{ currentVersion?.version_no ?? '—' }} · {{ currentVersion?.file_name ?? '—' }}
               </el-descriptions-item>
@@ -604,6 +610,11 @@ onUnmounted(() => {
             </el-table-column>
             <el-table-column label="页数" width="80">
               <template #default="{ row }: { row: DocumentVersion }">{{ row.page_count ?? '—' }}</template>
+            </el-table-column>
+            <el-table-column label="上传人" width="120">
+              <template #default="{ row }: { row: DocumentVersion }">
+                <span class="muted small">{{ row.created_by_name ?? '—' }}</span>
+              </template>
             </el-table-column>
             <el-table-column label="当前" width="80">
               <template #default="{ row }: { row: DocumentVersion }">

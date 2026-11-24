@@ -161,6 +161,27 @@ class Settings(BaseSettings):
     # 非管理员可见的最高密级；管理员不受此限制
     retrieval_max_sensitivity: Literal["public", "internal", "confidential", "secret"] = "internal"
 
+    # ---- 问答治理 ----
+    # 关掉只留痕不判定，用于灰度上线或排查误报
+    qa_triage_enabled: bool = True
+    qa_record_retention_days: int = 180
+    # 命中数低于该值打标，不单独入队
+    qa_low_hit_floor: int = 2
+    # 分数类标记线默认关闭：1 - cosine_distance 的分布随模型漂移，先拿真实分布再开
+    qa_score_mark_threshold: float = 0.0
+    qa_score_gap_threshold: float = 0.0
+    # 问题向量余弦相似度达到该值即归入同一簇
+    qa_cluster_similarity: float = 0.92
+
+    # ---- 查询改写 ----
+    # 一次运行的成本上限：模型调用与检索次数各自封顶，超时则回退到对照组结果
+    query_rewrite_timeout_seconds: float = 20.0
+    query_rewrite_max_llm_calls: int = 4
+    query_rewrite_max_queries: int = 8
+    # 判定"召回足够"所需的最少证据片段数
+    query_rewrite_min_evidence: int = 2
+    query_rewrite_rrf_k: int = 60
+
     # ---- 种子数据 ----
     seed_workspace_name: str = "默认空间"
     seed_workspace_slug: str = "default"

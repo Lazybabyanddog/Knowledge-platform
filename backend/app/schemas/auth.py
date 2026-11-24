@@ -46,4 +46,5 @@ class MeResponse(BaseModel):
     status: str
     workspace_id: str
     roles: list[str] = Field(default_factory=list)
+    permissions: list[str] = Field(default_factory=list)
     last_login_at: datetime | None = None

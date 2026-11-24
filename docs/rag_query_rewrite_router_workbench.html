@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG Query Rewrite · 策略路由与工作流实验室</title>
+<style>
+:root{--bg:#f4f6fa;--panel:#fff;--ink:#182230;--muted:#667085;--line:#e5e9f0;--blue:#315efb;--blue2:#edf2ff;--green:#14804a;--amber:#a15c07;--red:#b42318;--shadow:0 8px 24px rgba(16,24,40,.06)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 Inter,"PingFang SC","Microsoft YaHei",sans-serif}
+header{background:#101828;color:white;padding:25px max(22px,calc((100vw - 1240px)/2)) 23px}
+header h1{font-size:23px;margin:0 0 5px}header p{margin:0;color:#c7d2e0;max-width:850px}
+main{max-width:1240px;margin:22px auto;padding:0 18px 50px}.topnote{background:#fff8e8;border:1px solid #f4d79b;border-radius:12px;padding:12px 15px;margin-bottom:17px;color:#68430a}
+.layout{display:grid;grid-template-columns:350px 1fr;gap:17px;align-items:start}.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:17px;margin-bottom:16px}
+h2{font-size:16px;margin:0 0 13px}h3{font-size:14px;margin:0 0 8px}.sub{color:var(--muted);font-size:12px;margin-top:-7px;margin-bottom:12px}
+label{display:block;font-weight:600;margin:11px 0 5px}textarea,input,select{width:100%;border:1px solid #d0d5dd;border-radius:8px;padding:9px 10px;font:inherit;background:#fff;color:var(--ink)}textarea{min-height:82px;resize:vertical}
+button{border:0;border-radius:8px;padding:9px 13px;font-weight:650;cursor:pointer;font:inherit}.primary{background:var(--blue);color:white}.secondary{background:#eef2f7;color:#344054}.tiny{padding:5px 8px;font-size:12px}.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.modebox{display:grid;grid-template-columns:1fr 1fr;gap:8px}.mode{border:1px solid var(--line);border-radius:9px;padding:10px;cursor:pointer}.mode.active{border-color:var(--blue);background:var(--blue2)}.mode strong{display:block}.mode small{color:var(--muted)}
+.strategy{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #f0f2f5}.strategy:last-child{border:0}.strategy input{width:auto;margin-top:4px}.strategy span{flex:1}.strategy small{display:block;color:var(--muted);font-weight:400}
+.pill{display:inline-block;border-radius:99px;padding:2px 8px;font-size:11px;background:#f2f4f7;color:#475467;margin-left:5px}.pill.blue{background:#eaf0ff;color:#2448c7}.pill.green{background:#e8f7ef;color:#12643a}.pill.amber{background:#fff3dc;color:#87520b}
+.rightcol{min-width:0}.step{border:1px solid var(--line);border-radius:11px;padding:13px;margin:10px 0;background:#fff}.stephead{display:flex;justify-content:space-between;gap:10px;align-items:center}.stephead strong{font-size:14px}.step p{margin:5px 0 0;color:var(--muted);font-size:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.kv{background:#f8f9fc;border-radius:9px;padding:10px}.kv b{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}.tag{display:inline-block;background:#eef2ff;color:#344fbd;padding:3px 7px;border-radius:6px;margin:2px;font-size:12px}
+pre{white-space:pre-wrap;word-break:break-word;background:#101828;color:#e5eaf3;padding:12px;border-radius:9px;font-size:12px;overflow:auto;margin:8px 0}
+.flow{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:12px 0}.node{padding:9px 11px;border:1px solid #cfd7e5;background:#f8faff;border-radius:9px;font-size:12px}.node.on{border-color:#6b8aff;background:#edf2ff;color:#2448c7}.arrow{color:#98a2b3}
+.log{border-left:3px solid #d0d5dd;padding:4px 0 7px 12px;margin:7px 0}.log.ok{border-color:#12a15a}.log.warn{border-color:#e5a000}.log strong{display:block}.log small{color:var(--muted)}
+table{border-collapse:collapse;width:100%;font-size:12px}th,td{text-align:left;border-bottom:1px solid var(--line);padding:8px 7px;vertical-align:top}th{color:var(--muted);font-weight:650}
+.meter{height:8px;background:#edf0f5;border-radius:99px;overflow:hidden;margin-top:6px}.meter i{display:block;height:100%;background:var(--blue);width:0}
+.hidden{display:none!important}.muted{color:var(--muted)}.callout{padding:10px 12px;border-radius:9px;background:#f3f6ff;color:#344fbd;font-size:12px;margin-top:10px}.warnbox{background:#fff7ed;color:#8a4b08}
+footer{text-align:center;color:#98a2b3;font-size:12px;margin-top:20px}
+@media(max-width:850px){.layout{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>RAG Query Rewrite · 策略路由与工作流实验室</h1>
+  <p>把“策略勾选”升级为真正的路由实验：配置允许策略 → 查询理解 → Router 决策 → DAG 工作流执行 → 首轮检索评估 → 必要时二阶段补充检索。</p>
+</header>
+<main>
+<div class="topnote"><b>先记住这个设计原则：</b>前端勾选的是策略 Allowlist（允许使用的策略），不是“全部强制执行”。Router 根据 Query 特征、规则、模型建议和预算做最终决策；检索后还可以根据召回质量触发补充策略。</div>
+<div class="layout">
+<aside>
+  <section class="panel">
+    <h2>① 输入与运行模式</h2>
+    <label for="query">用户原始 Query</label>
+    <textarea id="query">这个案例和前面那个指导性案例有什么区别？分别适用什么情形？</textarea>
+    <label for="history">多轮对话历史（可选）</label>
+    <textarea id="history">用户：介绍一下指导性案例 15 号。\n助手：该案例涉及劳动争议中的竞业限制。\n用户：它的裁判要点是什么？</textarea>
+    <label for="domain">知识库领域</label>
+    <select id="domain"><option>法律知识库</option><option>企业产品知识库</option><option>技术文档知识库</option><option>通用知识库</option></select>
+    <label>路由模式</label>
+    <div class="modebox">
+      <div class="mode active" id="autoMode" onclick="setMode('auto')"><strong>自动路由</strong><small>Router 自主判断策略</small></div>
+      <div class="mode" id="manualMode" onclick="setMode('manual')"><strong>手动指定</strong><small>我指定本次执行策略</small></div>
+    </div>
+    <div class="btnrow"><button class="secondary tiny" onclick="loadExample('simple')">简单事实问答</button><button class="secondary tiny" onclick="loadExample('alias')">实体别名</button><button class="secondary tiny" onclick="loadExample('complex')">复杂多问</button></div>
+  </section>
+  <section class="panel">
+    <h2>② 策略 Allowlist</h2>
+    <p class="sub">关闭某策略表示 Router 不允许调用它；开启只代表“允许”，不代表一定执行。</p>
+    <div id="strategyList">
+      <label class="strategy"><input type="checkbox" value="context" checked><span>上下文改写<small>处理“它、这个、前面那个”等指代</small></span></label>
+      <label class="strategy"><input type="checkbox" value="semantic" checked><span>语义改写<small>口语化表达转为清晰检索表达</small></span></label>
+      <label class="strategy"><input type="checkbox" value="entity" checked><span>实体标准化<small>简称、别名、同名实体消歧</small></span></label>
+      <label class="strategy"><input type="checkbox" value="decompose" checked><span>问题拆解<small>把复合问题拆成可独立检索的子问题</small></span></label>
+      <label class="strategy"><input type="checkbox" value="multi" checked><span>Multi-Query<small>从不同表达角度扩展检索查询</small></span></label>
+      <label class="strategy"><input type="checkbox" value="hyde" checked><span>HyDE<small>生成假设性答案/文档用于向量检索</small></span></label>
+      <label class="strategy"><input type="checkbox" value="stepback" checked><span>Step-back<small>从具体问题抽象出原理性问题</small></span></label>
+    </div>
+    <label for="budget">本次改写预算（最多执行策略数）</label>
+    <select id="budget"><option value="2">2 个策略</option><option value="3" selected>3 个策略</option><option value="5">5 个策略</option><option value="7">不限制（最多 7 个）</option></select>
+    <div class="callout">生产建议：Allowlist、策略参数、触发规则、优先级、预算应分开配置。不要把所有策略开关等同于工作流步骤。</div>
+  </section>
+  <section class="panel">
+    <h2>③ 路由规则（示意）</h2>
+    <table><tr><th>策略</th><th>触发信号</th></tr>
+      <tr><td>上下文改写</td><td>有历史 + 指代消解确有必要</td></tr>
+      <tr><td>实体标准化</td><td>识别到别名/简称/歧义实体</td></tr>
+      <tr><td>语义改写</td><td>口语、错别字、表达不完整</td></tr>
+      <tr><td>问题拆解</td><td>多个目标或多项约束</td></tr>
+      <tr><td>Multi-Query</td><td>需要多角度覆盖，或首轮召回不足</td></tr>
+      <tr><td>HyDE</td><td>概念型/语义型检索且首轮召回不足</td></tr>
+      <tr><td>Step-back</td><td>问题需要背景原理/上位概念</td></tr>
+    </table>
+    <p class="sub" style="margin:9px 0 0">“出现它”只是指代线索，不足以直接触发上下文改写；必须结合历史判断它指向什么。</p>
+  </section>
+</aside>
+
+<div class="rightcol">
+  <section class="panel">
+    <div class="stephead"><h2>④ 查询理解（Query Understanding）</h2><span class="pill blue">结构化中间结果</span></div>
+    <p class="sub">先提取事实与特征，再路由。LLM 分类结果只是候选建议，不能直接当作最终执行指令。</p>
+    <div class="grid2" id="understanding">
+      <div class="kv"><b>意图 intent</b><span id="intent">等待分析</span></div>
+      <div class="kv"><b>复杂度 complexity</b><span id="complexity">—</span></div>
+      <div class="kv"><b>实体 entities</b><span id="entities">—</span></div>
+      <div class="kv"><b>指代 references</b><span id="references">—</span></div>
+      <div class="kv"><b>约束 constraints</b><span id="constraints">—</span></div>
+      <div class="kv"><b>模型候选策略（非最终决策）</b><span id="candidates">—</span></div>
+    </div>
+    <div class="btnrow"><button class="primary" onclick="runPipeline()">运行路由与检索模拟</button><button class="secondary" onclick="resetAll()">重置</button></div>
+  </section>
+
+  <section class="panel">
+    <div class="stephead"><h2>⑤ Router 最终决策</h2><span class="pill">Policy Routing</span></div>
+    <div id="routeSummary" class="muted">运行后显示：规则命中、Allowlist 过滤、预算约束及最终执行策略。</div>
+    <div id="routeTable"></div>
+    <div class="callout warnbox">Router 的工作不是“相信 LLM 说该用什么”，而是综合规则信号、模型候选、管理员配置、策略依赖/互斥关系和成本预算，输出可解释的最终决策。</div>
+  </section>
+
+  <section class="panel">
+    <div class="stephead"><h2>⑥ 工作流 DAG（有依赖、有分支）</h2><span class="pill blue">Workflow Orchestrator</span></div>
+    <div class="flow" id="flow">
+      <div class="node on">原始 Query</div><span class="arrow">→</span><div class="node">查询理解</div><span class="arrow">→</span><div class="node">策略路由</div><span class="arrow">→</span><div class="node">检索</div>
+    </div>
+    <div id="workflowExplain" class="muted">工作流会按依赖执行，而不是把所有策略简单并行调用。</div>
+    <pre id="workflowJson">点击“运行路由与检索模拟”后生成工作流计划。</pre>
+  </section>
+
+  <section class="panel">
+    <div class="stephead"><h2>⑦ 首轮检索与质量评估</h2><span class="pill amber">关键：检索后再判断是否补救</span></div>
+    <p class="sub">召回不足无法只靠检索前猜测。先执行首轮检索，再根据相关性分数/有效证据数判断是否启动补充策略。</p>
+    <div class="grid2">
+      <div class="kv"><b>首轮有效证据数</b><span id="evidenceCount">—</span></div>
+      <div class="kv"><b>召回质量分（模拟）</b><span id="quality">—</span><div class="meter"><i id="qualityBar"></i></div></div>
+    </div>
+    <label for="threshold">触发补充检索阈值</label>
+    <select id="threshold"><option value="0.45">低于 0.45：较宽松</option><option value="0.6" selected>低于 0.60：默认</option><option value="0.75">低于 0.75：较严格</option></select>
+    <div id="secondStage" class="step"><b>二阶段状态：</b>等待首轮检索评估</div>
+    <p class="sub">可选补充动作：Multi-Query 扩展查询、HyDE 辅助向量召回。必须受 Allowlist 和预算约束；补充结果与首轮结果融合、去重后再 Rerank。</p>
+  </section>
+
+  <section class="panel">
+    <h2>⑧ 执行日志与面试表达</h2>
+    <div id="logs"><div class="muted">等待执行。</div></div>
+    <div class="callout"><b>面试一句话：</b>我把 Query Rewrite 设计成“查询理解 + 策略路由 + DAG 工作流 + 检索反馈”的闭环。前端配置的是策略允许列表，Router 决定本次触发哪些策略；首轮召回后再评估质量，必要时触发 Multi-Query 或 HyDE 做二阶段补充检索，最后通过 RRF/去重/Rerank 融合结果。</div>
+  </section>
+</div>
+</div>
+<footer>学习原型 · 路由规则与检索分数为模拟数据，不会真实调用 LLM、Embedding 或向量数据库。</footer>
+</main>
+<script>
+let mode='auto';
+const names={context:'上下文改写',semantic:'语义改写',entity:'实体标准化',decompose:'问题拆解',multi:'Multi-Query',hyde:'HyDE',stepback:'Step-back'};
+function setMode(m){mode=m;document.getElementById('autoMode').classList.toggle('active',m==='auto');document.getElementById('manualMode').classList.toggle('active',m==='manual');}
+function enabled(){return [...document.querySelectorAll('#strategyList input:checked')].map(x=>x.value)}
+function loadExample(t){
+ const q=document.getElementById('query'),h=document.getElementById('history');
+ if(t==='simple'){q.value='指导性案例 15 号的裁判要点是什么？';h.value='';}
+ if(t==='alias'){q.value='最高院的指导案例15号讲了什么？';h.value='';}
+ if(t==='complex'){q.value='比较指导性案例15号和案例32号的裁判规则，分别说明适用条件、例外情形以及对本案的影响。';h.value='';}
+}
+function hasAlias(q){return /(最高院|最高法|指导案例\\s*\\d+号|民诉法|劳动合同法)/i.test(q)}
+function runPipeline(){
+ const q=document.getElementById('query').value.trim(),h=document.getElementById('history').value.trim();
+ if(!q){alert('请先输入 Query');return}
+ const allow=enabled(),budget=+document.getElementById('budget').value,manual=mode==='manual';
+ const refWords=/(它|这个|那个|前面那个|上述|该案例|其)/.test(q);
+ const complex=/(分别|比较|对比|以及|同时|并且|影响|条件.*例外)/.test(q);
+ const colloquial=/(讲了什么|怎么回事|咋|说一下|有什么区别)/.test(q);
+ const alias=hasAlias(q);
+ const conceptual=/(原理|为什么|机制|本质|如何理解)/.test(q);
+ const features={has_history:!!h,reference_cue:refWords,complex_query:complex,colloquial,alias_candidate:alias,conceptual};
+ let detected=[];
+ if(refWords && h)detected.push('context');
+ if(colloquial)detected.push('semantic');
+ if(alias)detected.push('entity');
+ if(complex)detected.push('decompose');
+ if(conceptual)detected.push('stepback');
+ // Classifier candidates are advisory, add plausible coverage expansion for complex queries.
+ let candidates=[...detected];
+ if(complex)candidates.push('multi');
+ candidates=[...new Set(candidates)];
+ let final=[];
+ if(manual){final=allow.filter(x=>detected.includes(x));}
+ else {
+   // Context resolution precedes semantic cleanup; entity normalization precedes decomposition.
+   const order=['context','entity','semantic','decompose','stepback'];
+   final=order.filter(x=>detected.includes(x)&&allow.includes(x));
+   if(complex&&allow.includes('multi')&&!final.includes('multi'))final.push('multi');
+ }
+ final=final.slice(0,budget);
+ const blocked=detected.filter(x=>!allow.includes(x));
+ const intent=complex?'多条件比较 / 复合问答':refWords&&h?'基于上下文的追问':conceptual?'原理解释': '事实查询 / 知识检索';
+ document.getElementById('intent').textContent=intent;
+ document.getElementById('complexity').textContent=complex?'高':(refWords?'中':'低');
+ document.getElementById('entities').innerHTML=alias?'<span class="tag">指导性案例 15 号（待实体链接确认）</span>':'未识别到明确实体';
+ document.getElementById('references').textContent=refWords?(h?'检测到指代线索，需结合历史解析':'有指代词，但缺少历史，不能可靠消解'):'未发现明显指代';
+ document.getElementById('constraints').textContent=complex?'比较对象、适用条件、例外情形、影响':'未抽取到显式结构化过滤条件';
+ document.getElementById('candidates').innerHTML=candidates.length?candidates.map(x=>'<span class="tag">'+names[x]+'</span>').join(''):'DIRECT_RETRIEVAL';
+ document.getElementById('routeSummary').innerHTML=manual?'手动指定模式：只从 Allowlist 中选择本次检测到且可执行的策略。':'自动路由模式：规则特征生成候选，Router 再经过 Allowlist 与预算过滤。';
+ let rows='<table><tr><th>策略</th><th>触发依据</th><th>决策</th></tr>';
+ const reasons={context:'存在指代线索，且有历史上下文',semantic:'表达偏口语/不够检索友好',entity:'检测到疑似别名/简称，需实体链接确认',decompose:'存在多个比较维度/子目标',multi:'复合问题需要多角度检索覆盖',stepback:'出现原理/机制类抽象意图',hyde:'首轮召回不足后才考虑触发'};
+ Object.keys(names).forEach(x=>{
+   let hit=detected.includes(x)||(x==='multi'&&complex);
+   let decision=final.includes(x)?'<span class="pill green">执行</span>':hit&&!allow.includes(x)?'<span class="pill">Allowlist 拦截</span>':hit?'<span class="pill amber">预算/模式未选</span>':'<span class="pill">不触发</span>';
+   rows+='<tr><td>'+names[x]+'</td><td>'+(reasons[x]||'需质量反馈触发')+'</td><td>'+decision+'</td></tr>';
+ });
+ rows+='</table>';document.getElementById('routeTable').innerHTML=rows;
+ const steps=[];
+ steps.push({id:'understand',label:'查询理解',desc:'抽取意图、实体、指代、复杂度和约束'});
+ steps.push({id:'route',label:'策略路由',desc:'规则 + 模型候选 + Allowlist + 预算'});
+ if(final.includes('context'))steps.push({id:'context',label:'上下文改写',desc:'结合历史补全指代对象'});
+ if(final.includes('entity'))steps.push({id:'entity',label:'实体标准化',desc:'别名映射/实体链接/歧义消解'});
+ if(final.includes('semantic'))steps.push({id:'semantic',label:'语义改写',desc:'整理表达，不新增未经证实的事实'});
+ if(final.includes('decompose'))steps.push({id:'decompose',label:'问题拆解',desc:'生成子问题并保留子问题-证据映射'});
+ if(final.includes('stepback'))steps.push({id:'stepback',label:'Step-back',desc:'按需生成上位概念检索分支'});
+ steps.push({id:'retrieve1',label:'首轮检索',desc:'原始/改写查询并行或按配置检索'});
+ steps.push({id:'evaluate',label:'召回质量评估',desc:'有效证据数、相关性阈值、覆盖度'});
+ steps.push({id:'branch',label:'条件分支',desc:'不足则触发二阶段补充检索'});
+ steps.push({id:'fusion',label:'融合 + Rerank',desc:'去重、RRF 融合、重排，构建上下文'});
+ let flow=steps.map((s,i)=>'<div class="node '+(i<steps.length?'on':'')+'">'+s.label+'</div>'+(i<steps.length-1?'<span class="arrow">→</span>':'')).join('');
+ document.getElementById('flow').innerHTML=flow;
+ document.getElementById('workflowExplain').textContent=final.length?'本次执行策略：'+final.map(x=>names[x]).join('、')+'。顺序体现依赖关系；未触发的策略不会进入 DAG。':'本次没有触发改写策略，直接检索。';
+ document.getElementById('workflowJson').textContent=JSON.stringify({mode,features,allowlist:allow,budget,router_decision:final,workflow:steps.map(s=>s.id),notes:['实体候选需要实体链接确认','模型分类仅作为候选信号','召回不足在首轮检索后评估']},null,2);
+ // Deterministic illustrative retrieval quality: complex questions are more likely to need extra coverage.
+ let quality=complex?0.48:(alias?0.56:(refWords?0.63:0.82));
+ if(final.includes('context'))quality+=0.07;if(final.includes('entity'))quality+=0.05;if(final.includes('decompose'))quality+=0.03;
+ quality=Math.min(.94,quality);const threshold=+document.getElementById('threshold').value;
+ document.getElementById('quality').textContent=quality.toFixed(2)+' / 1.00';
+ document.getElementById('qualityBar').style.width=(quality*100)+'%';
+ document.getElementById('evidenceCount').textContent=quality>=threshold?'5 条候选证据（模拟）':'2 条有效证据（模拟）';
+ let second='';let secondActions=[];
+ if(quality<threshold){
+   if(allow.includes('multi'))secondActions.push('Multi-Query');
+   if(allow.includes('hyde')&&(conceptual||!secondActions.length))secondActions.push('HyDE');
+   if(secondActions.length){second='首轮质量 '+quality.toFixed(2)+' 低于阈值 '+threshold.toFixed(2)+'，触发二阶段：'+secondActions.join(' + ')+'。补充结果将与首轮结果去重、RRF 融合，再交给 Reranker。';}
+   else second='首轮质量不足，但 Allowlist 未开放 Multi-Query / HyDE，系统降级：返回当前候选并提示低置信度，或转人工/扩大关键词检索。';
+ }else second='首轮质量达到阈值，不触发二阶段补充检索，避免无意义扩展和额外 Token/延迟。';
+ document.getElementById('secondStage').innerHTML='<b>二阶段状态：</b>'+second;
+ const logs=[
+ ['查询理解完成',intent+'；复杂度：'+(complex?'高':'低'),'ok'],
+ ['Router 决策完成',final.length?'最终策略：'+final.map(x=>names[x]).join('、'):'未触发改写，直接检索','ok'],
+ ['首轮检索评估','质量分 '+quality.toFixed(2)+'，阈值 '+threshold.toFixed(2),quality<threshold?'warn':'ok'],
+ ['二阶段判断',second,quality<threshold?'warn':'ok']
+ ];
+ document.getElementById('logs').innerHTML=logs.map(l=>'<div class="log '+l[2]+'"><strong>'+l[0]+'</strong><small>'+l[1]+'</small></div>').join('');
+}
+function resetAll(){document.getElementById('query').value='';document.getElementById('history').value='';document.getElementById('routeSummary').textContent='运行后显示：规则命中、Allowlist 过滤、预算约束及最终执行策略。';document.getElementById('routeTable').innerHTML='';document.getElementById('logs').innerHTML='<div class="muted">等待执行。</div>';document.getElementById('secondStage').innerHTML='<b>二阶段状态：</b>等待首轮检索评估';document.getElementById('quality').textContent='—';document.getElementById('evidenceCount').textContent='—';document.getElementById('qualityBar').style.width='0';}
+</script>
+</body>
+</html>

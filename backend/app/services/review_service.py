@@ -26,7 +26,12 @@ from app.domain.enums import (
 )
 from app.infra.db.models import Document, DocumentVersion, ReviewFlow, ReviewInstance
 from app.infra.db.models.review import ReviewRecord
-from app.infra.db.repositories import DocumentRepository, ReviewRepository, UserRepository
+from app.infra.db.repositories import (
+    DocumentRepository,
+    ReviewRepository,
+    RoleRepository,
+    UserRepository,
+)
 from app.schemas.review import (
     ReviewFlowCreateRequest,
     ReviewFlowItem,
@@ -45,7 +50,6 @@ from app.services.audit_service import AuditService
 from app.services.index_service import enqueue_version_index, reset_version_index
 
 OVERDUE_WORKDAYS = 3
-ROLE_CODES = {role.value for role in RoleCode}
 
 
 def business_days_between(start: datetime, end: datetime) -> int:
@@ -176,6 +180,7 @@ class ReviewService:
         self.reviews = ReviewRepository(db)
         self.documents = DocumentRepository(db)
         self.users = UserRepository(db)
+        self.roles = RoleRepository(db)
         self.audit = AuditService(db)
 
     # ------------------------------------------------------------------ #
@@ -623,9 +628,15 @@ class ReviewService:
     # 内部
     # ------------------------------------------------------------------ #
     def _validate_steps(self, principal: Principal, steps: list[Any]) -> list[dict[str, Any]]:
+        role_codes = {
+            step.approver_value
+            for step in steps
+            if step.approver_type == "role"
+        }
+        known_role_codes = self.roles.exists_codes(list(role_codes))
         for index, step in enumerate(steps, start=1):
             if step.approver_type == "role":
-                if step.approver_value not in ROLE_CODES:
+                if step.approver_value not in known_role_codes:
                     raise BadRequestError(
                         f"第 {index} 步审批角色不存在: {step.approver_value}"
                     )

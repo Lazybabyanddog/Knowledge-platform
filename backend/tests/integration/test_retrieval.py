@@ -26,6 +26,7 @@ from app.infra.db.models import (
     Workspace,
 )
 from app.infra.db.models.parse_task import ParseBlock, ParseTask
+from app.infra.db.models.qa import QaIssue, QaRecord
 from app.infra.db.models.retrieval import DocumentChunk
 from app.infra.llm import provider
 from app.services import index_service
@@ -33,6 +34,18 @@ from app.services.index_service import build_version_index
 from app.services.retrieval_service import NO_HIT_ANSWER, RetrievalService
 
 VECTOR = [0.01] * 1024
+
+
+@pytest.fixture(autouse=True)
+def clean_qa_records(db: Session) -> Iterator[None]:
+    """问答留痕会给每个 ask 用例留数据，测试结束按新增行清理。"""
+    record_ids = set(db.scalars(select(QaRecord.id)).all())
+    issue_ids = set(db.scalars(select(QaIssue.id)).all())
+    yield
+    db.rollback()
+    db.execute(delete(QaIssue).where(QaIssue.id.notin_(issue_ids)))
+    db.execute(delete(QaRecord).where(QaRecord.id.notin_(record_ids)))
+    db.commit()
 
 
 @pytest.fixture
@@ -330,6 +343,8 @@ def test_ask_streams_sources_then_deltas_then_done(
 
     assert "".join(data["text"] for name, data in events[1:4] if name == "delta") == "根据资料[1]"
     assert events[-1][1]["sources"] == 1
+    # 结束事件必须带记录标识，前端才能把评价挂到这次问答上
+    assert uuid.UUID(events[-1][1]["qa_record_id"])
 
     # 提示词必须带编号资料与「只依据资料」的约束，编号与 sources 顺序一致
     system, user = captured["messages"][0]["content"], captured["messages"][1]["content"]
@@ -345,7 +360,9 @@ def test_ask_without_hits_skips_model(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     make_indexed_document(f"无关文档-{uuid.uuid4().hex[:6]}")
-    monkeypatch.setattr(RetrievalService, "search", lambda self, *args, **kwargs: [])
+    monkeypatch.setattr(
+        RetrievalService, "search_with_vector", lambda self, *args, **kwargs: ([], [])
+    )
 
     def _boom(messages: list[dict[str, str]]) -> AsyncIterator[str]:
         raise AssertionError("零命中时不应调用模型")
@@ -360,6 +377,8 @@ def test_ask_without_hits_skips_model(
     assert events[0][1]["sources"] == []
     assert events[1][1]["text"] == NO_HIT_ANSWER
     assert events[2][1]["sources"] == 0
+    # 无命中同样是完整问答，评价也要能挂上去
+    assert uuid.UUID(events[2][1]["qa_record_id"])
 
 
 def test_ask_returns_503_when_llm_missing(
@@ -378,6 +397,7 @@ def test_ask_returns_503_when_llm_missing(
 
 
 def test_ask_emits_error_event_when_upstream_fails(
+    db: Session,
     client: TestClient,
     auth_headers: dict[str, str],
     make_indexed_document: Callable[..., Document],
@@ -399,6 +419,17 @@ def test_ask_emits_error_event_when_upstream_fails(
     assert [name for name, _ in events] == ["sources", "delta", "error"]
     assert events[-1][1]["code"] == "LLM_CALL_FAILED"
     assert "上游连接中断" in events[-1][1]["message"]
+
+    # 失败也要落终态：半截答案保留，但不发 done，因此前端拿不到可反馈标识
+    record = db.scalar(
+        select(QaRecord)
+        .where(QaRecord.question == "正文片段")
+        .order_by(QaRecord.created_at.desc())
+        .limit(1)
+    )
+    assert record is not None
+    assert record.answer_status == "failed"
+    assert record.answer == "部分"
 
 
 def test_ask_audits_question_summary_without_answer(

@@ -1,0 +1,4688 @@
+{
+  "rows": [
+    {
+      "question": "q1",
+      "query": "它怎么算？",
+      "config": "off",
+      "config_label": "关闭改写",
+      "summary": {
+        "executed": [],
+        "rewritten_executed": true,
+        "baseline_top1": 0.310436,
+        "rewritten_top1": 0.309839,
+        "lift": -0.000597,
+        "above_tau": 0,
+        "docs": 5,
+        "verdict": "insufficient",
+        "elapsed_ms": 4282,
+        "llm_calls": 1,
+        "retrieval_calls": 2,
+        "warnings": 1,
+        "degraded": false
+      }
+    },
+    {
+      "question": "q2",
+      "query": "年假和调休有啥不一样？",
+      "config": "off",
+      "config_label": "关闭改写",
+      "summary": {
+        "executed": [],
+        "rewritten_executed": true,
+        "baseline_top1": 0.59364,
+        "rewritten_top1": 0.593147,
+        "lift": -0.000493,
+        "above_tau": 0,
+        "docs": 5,
+        "verdict": "insufficient",
+        "elapsed_ms": 5966,
+        "llm_calls": 1,
+        "retrieval_calls": 2,
+        "warnings": 1,
+        "degraded": false
+      }
+    },
+    {
+      "question": "q3",
+      "query": "出差回来报销和年假没休完折算这两件事分别怎么弄？",
+      "config": "off",
+      "config_label": "关闭改写",
+      "summary": {
+        "executed": [],
+        "rewritten_executed": true,
+        "baseline_top1": 0.562173,
+        "rewritten_top1": 0.561908,
+        "lift": -0.000265,
+        "above_tau": 0,
+        "docs": 5,
+        "verdict": "insufficient",
+        "elapsed_ms": 13961,
+        "llm_calls": 1,
+        "retrieval_calls": 2,
+        "warnings": 1,
+        "degraded": false
+      }
+    },
+    {
+      "question": "q4",
+      "query": "《员工手册》里请假的规定？",
+      "config": "off",
+      "config_label": "关闭改写",
+      "summary": {
+        "executed": [],
+        "rewritten_executed": true,
+        "baseline_top1": 0.711502,
+        "rewritten_top1": 0.711471,
+        "lift": -3.1e-05,
+        "above_tau": 3,
+        "docs": 5,
+        "verdict": "sufficient",
+        "elapsed_ms": 4321,
+        "llm_calls": 1,
+        "retrieval_calls": 2,
+        "warnings": 0,
+        "degraded": false
+      }
+    },
+    {
+      "question": "q5",
+      "query": "满十年工龄年假多少天？",
+      "config": "off",
+      "config_label": "关闭改写",
+      "summary": {
+        "executed": [],
+        "rewritten_executed": true,
+        "baseline_top1": 0.793005,
+        "rewritten_top1": 0.793028,
+        "lift": 2.3e-05,
+        "above_tau": 1,
+        "docs": 5,
+        "verdict": "insufficient",
+        "elapsed_ms": 5585,
+        "llm_calls": 1,
+        "retrieval_calls": 2,
+        "warnings": 1,
+        "degraded": false
+      }
+    },
+    {
+      "question": "q1",
+      "query": "它怎么算？",
+      "config": "semantic",
+      "config_label": "只开语义改写",
+      "summary": {
+        "executed": [],
+        "rewritten_executed": true,
+        "baseline_top1": 0.310634,
+        "rewritten_top1": 0.310248,
+        "lift": -0.000386,
+        "above_tau": 0,
+        "docs": 5,
+        "verdict": "insufficient",
+        "elapsed_ms": 5883,
+        "llm_calls": 1,
+        "retrieval_calls": 2,
+        "warnings": 1,
+        "degraded": false
+      }
+    },
+    {
+      "question": "q2",
+      "query": "年假和调休有啥不一样？",
+      "config": "semantic",
+      "config_label": "只开语义改写",
+      "summary": {
+        "executed": [],
+        "rewritten_executed": true,
+        "baseline_top1": 0.593007,
+        "rewritten_top1": 0.593285,
+        "lift": 0.000278,
+        "above_tau": 0,
+        "docs": 5,
+        "verdict": "insufficient",
+        "elapsed_ms": 5103,
+        "llm_calls": 1,
+        "retrieval_calls": 2,
+        "warnings": 1,
+        "degraded": false
+      }
+    },
+    {
+      "question": "q3",
+      "query": "出差回来报销和年假没休完折算这两件事分别怎么弄？",
+      "config": "semantic",
+      "config_label": "只开语义改写",
+      "summary": {
+        "executed": [
+          "semantic"
+        ],
+        "rewritten_executed": true,
+        "baseline_top1": 0.561997,
+        "rewritten_top1": 0.581775,
+        "lift": 0.019778,
+        "above_tau": 0,
+        "docs": 5,
+        "verdict": "insufficient",
+        "elapsed_ms": 15836,
+        "llm_calls": 2,
+        "retrieval_calls": 2,
+        "warnings": 1,
+        "degraded": false
+      }
+    },
+    {
+      "question": "q4",
+      "query": "《员工手册》里请假的规定？",
+      "config": "semantic",
+      "config_label": "只开语义改写",
+      "summary": {
+        "executed": [],
+        "rewritten_executed": true,
+        "baseline_top1": 0.712254,
+        "rewritten_top1": 0.711592,
+        "lift": -0.000662,
+        "above_tau": 3,
+        "docs": 5,
+        "verdict": "sufficient",
+        "elapsed_ms": 5786,
+        "llm_calls": 1,
+        "retrieval_calls": 2,
+        "warnings": 0,
+        "degraded": false
+      }
+    },
+    {
+      "question": "q5",
+      "query": "满十年工龄年假多少天？",
+      "config": "semantic",
+      "config_label": "只开语义改写",
+      "summary": {
+        "executed": [],
+        "rewritten_executed": true,
+        "baseline_top1": 0.792858,
+        "rewritten_top1": 0.792599,
+        "lift": -0.000259,
+        "above_tau": 1,
+        "docs": 5,
+        "verdict": "insufficient",
+        "elapsed_ms": 4916,
+        "llm_calls": 1,
+        "retrieval_calls": 2,
+        "warnings": 1,
+        "degraded": false
+      }
+    },
+    {
+      "question": "q1",
+      "query": "它怎么算？",
+      "config": "full",
+      "config_label": "全开",
+      "summary": {
+        "executed": [
+          "context"
+        ],
+        "rewritten_executed": true,
+        "baseline_top1": 0.310639,
+        "rewritten_top1": 0.713664,
+        "lift": 0.403025,
+        "above_tau": 1,
+        "docs": 6,
+        "verdict": "insufficient",
+        "elapsed_ms": 14385,
+        "llm_calls": 3,
+        "retrieval_calls": 5,
+        "warnings": 1,
+        "degraded": false
+      }
+    },
+    {
+      "question": "q2",
+      "query": "年假和调休有啥不一样？",
+      "config": "full",
+      "config_label": "全开",
+      "summary": {
+        "executed": [],
+        "rewritten_executed": true,
+        "baseline_top1": 0.593068,
+        "rewritten_top1": 0.600867,
+        "lift": 0.007799,
+        "above_tau": 1,
+        "docs": 5,
+        "verdict": "insufficient",
+        "elapsed_ms": 9155,
+        "llm_calls": 2,
+        "retrieval_calls": 5,
+        "warnings": 1,
+        "degraded": false
+      }
+    },
+    {
+      "question": "q3",
+      "query": "出差回来报销和年假没休完折算这两件事分别怎么弄？",
+      "config": "full",
+      "config_label": "全开",
+      "summary": {
+        "executed": [
+          "semantic",
+          "decompose",
+          "multi"
+        ],
+        "rewritten_executed": false,
+        "baseline_top1": 0.563355,
+        "rewritten_top1": 0.0,
+        "lift": null,
+        "above_tau": 0,
+        "docs": 0,
+        "verdict": "insufficient",
+        "elapsed_ms": 25410,
+        "llm_calls": 4,
+        "retrieval_calls": 1,
+        "warnings": 3,
+        "degraded": true
+      }
+    },
+    {
+      "question": "q4",
+      "query": "《员工手册》里请假的规定？",
+      "config": "full",
+      "config_label": "全开",
+      "summary": {
+        "executed": [
+          "entity"
+        ],
+        "rewritten_executed": true,
+        "baseline_top1": 0.711519,
+        "rewritten_top1": 0.711246,
+        "lift": -0.000273,
+        "above_tau": 3,
+        "docs": 5,
+        "verdict": "sufficient",
+        "elapsed_ms": 5046,
+        "llm_calls": 1,
+        "retrieval_calls": 2,
+        "warnings": 0,
+        "degraded": false
+      }
+    },
+    {
+      "question": "q5",
+      "query": "满十年工龄年假多少天？",
+      "config": "full",
+      "config_label": "全开",
+      "summary": {
+        "executed": [],
+        "rewritten_executed": true,
+        "baseline_top1": 0.792588,
+        "rewritten_top1": 0.815325,
+        "lift": 0.022737,
+        "above_tau": 1,
+        "docs": 5,
+        "verdict": "insufficient",
+        "elapsed_ms": 10954,
+        "llm_calls": 2,
+        "retrieval_calls": 5,
+        "warnings": 1,
+        "degraded": false
+      }
+    }
+  ],
+  "traces": [
+    {
+      "config": "off",
+      "question": "q1",
+      "trace": {
+        "request": {
+          "query": "它怎么算？",
+          "mode": "auto",
+          "allowlist": [],
+          "budget": 1,
+          "quality_threshold": 0.6,
+          "top_k": 5,
+          "doc_type": null,
+          "history_turns": 1
+        },
+        "understanding": {
+          "intent": "用户想解决年假如何计算",
+          "complexity": "low",
+          "entities": [
+            "年假"
+          ],
+          "references": [
+            {
+              "cue": "它",
+              "resolved": true,
+              "reason": "已按对话历史消解"
+            }
+          ],
+          "constraints": [],
+          "candidate_strategies": [
+            "semantic",
+            "entity",
+            "context"
+          ],
+          "source": "llm",
+          "degraded": false
+        },
+        "routing": [
+          {
+            "strategy": "context",
+            "label": "上下文改写",
+            "kind": "text",
+            "decision": "blocked_by_allowlist",
+            "evidence": [
+              "指代线索：它"
+            ],
+            "reason": "命中规则信号，但不在本次允许列表内"
+          },
+          {
+            "strategy": "entity",
+            "label": "实体标准化",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现需要标准化的别名"
+          },
+          {
+            "strategy": "semantic",
+            "label": "语义改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "表达已足够检索友好"
+          },
+          {
+            "strategy": "decompose",
+            "label": "问题拆解",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "查询不是复合问题"
+          },
+          {
+            "strategy": "multi",
+            "label": "Multi-Query",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "单一查询已能覆盖需求"
+          },
+          {
+            "strategy": "stepback",
+            "label": "Step-back",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          },
+          {
+            "strategy": "hyde",
+            "label": "HyDE",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          }
+        ],
+        "workflow": [
+          {
+            "id": "understand",
+            "label": "查询理解",
+            "kind": "understand",
+            "depends_on": [],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "baseline",
+            "label": "对照组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "understand"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "rewritten",
+            "label": "改写组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "baseline"
+            ],
+            "status": "ok",
+            "elapsed_ms": 310
+          },
+          {
+            "id": "evaluate",
+            "label": "质量评估",
+            "kind": "evaluate",
+            "depends_on": [
+              "baseline",
+              "rewritten"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "fuse",
+            "label": "融合去重",
+            "kind": "fuse",
+            "depends_on": [
+              "evaluate"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          }
+        ],
+        "rewrites": [],
+        "arms": [
+          {
+            "arm": "baseline",
+            "queries": [
+              "它怎么算？"
+            ],
+            "metrics": {
+              "top1": 0.310436,
+              "above_tau": 0,
+              "docs": 5
+            },
+            "hit_count": 5
+          },
+          {
+            "arm": "rewritten",
+            "queries": [
+              "它怎么算？"
+            ],
+            "metrics": {
+              "top1": 0.309839,
+              "above_tau": 0,
+              "docs": 5
+            },
+            "hit_count": 5
+          }
+        ],
+        "evaluation": {
+          "verdict": "insufficient",
+          "lift": -0.000597,
+          "reason": "达到阈值的片段只有 0 条（要求 2 条）；最高分 0.309839 低于阈值 0.6"
+        },
+        "second_stage": {
+          "triggered": false,
+          "actions": [],
+          "new_chunks": 0,
+          "reason": "Allowlist 未开放 Multi-Query，未做补充检索，结果按低置信度返回"
+        },
+        "fusion": {
+          "method": "rrf",
+          "k": 60,
+          "before": 5,
+          "after": 5,
+          "items": [
+            {
+              "index": 1,
+              "chunk_id": "4d579ef4-7382-4c49-a105-92afc64df28e",
+              "document_id": "9270d8bf-b802-445c-8631-28d31f50b5f2",
+              "title": "调休与加班规定（benchmark）",
+              "version_no": 1,
+              "content": "工作日加班可按 1:1 申请调休；调休需在加班后三个月内使用，逾期作废，不可折算现金。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.310436,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 2,
+              "chunk_id": "27479bf9-6a12-4caf-b818-c09701b905f3",
+              "document_id": "98ba1494-cd3f-4465-9ebf-bf8a522949d2",
+              "title": "病假与事假规定（benchmark）",
+              "version_no": 1,
+              "content": "病假需提供二级以上医院证明；事假按天扣发当日工资，全年事假累计不超过 15 天。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.30664,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 3,
+              "chunk_id": "5cade0e1-e2c3-46cb-9321-d43133901d65",
+              "document_id": "172410ed-7df0-4674-a22e-02ed559164b3",
+              "title": "差旅报销标准（benchmark）",
+              "version_no": 1,
+              "content": "出差住宿一线城市每晚不超过 600 元；差旅报销需在行程结束后 30 天内提交发票。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.297793,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 4,
+              "chunk_id": "26056405-fff0-4dd1-ade0-0927d5255cf5",
+              "document_id": "69b87685-d56b-47ae-b7d7-93c0980d4b72",
+              "title": "年假管理制度（benchmark）",
+              "version_no": 1,
+              "content": "员工入职满一年享有 5 天年假；累计工龄满十年享有 10 天年假；年假需提前三个工作日申请。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.294087,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 5,
+              "chunk_id": "444e4d1d-d8dc-44da-a6ce-b9828944f41c",
+              "document_id": "76c7eb20-d952-49a2-9bdc-306605f381d5",
+              "title": "考勤与请假流程（benchmark）",
+              "version_no": 1,
+              "content": "请假需在考勤系统提交申请，由直属主管审批；连续请假超过三天需部门负责人复核。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.286057,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            }
+          ]
+        },
+        "totals": {
+          "llm_calls": 1,
+          "embed_calls": 2,
+          "retrieval_calls": 2,
+          "elapsed_ms": 4282
+        },
+        "degraded": false,
+        "warnings": [
+          "补充检索后仍不足：达到阈值的片段只有 0 条（要求 2 条）；最高分 0.309839 低于阈值 0.6"
+        ]
+      }
+    },
+    {
+      "config": "off",
+      "question": "q2",
+      "trace": {
+        "request": {
+          "query": "年假和调休有啥不一样？",
+          "mode": "auto",
+          "allowlist": [],
+          "budget": 1,
+          "quality_threshold": 0.6,
+          "top_k": 5,
+          "doc_type": null,
+          "history_turns": 0
+        },
+        "understanding": {
+          "intent": "查询年假与调休的区别",
+          "complexity": "medium",
+          "entities": [
+            "年假",
+            "调休"
+          ],
+          "references": [],
+          "constraints": [],
+          "candidate_strategies": [
+            "semantic",
+            "entity",
+            "decompose"
+          ],
+          "source": "llm",
+          "degraded": false
+        },
+        "routing": [
+          {
+            "strategy": "context",
+            "label": "上下文改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现指代线索"
+          },
+          {
+            "strategy": "entity",
+            "label": "实体标准化",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现需要标准化的别名"
+          },
+          {
+            "strategy": "semantic",
+            "label": "语义改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "表达已足够检索友好"
+          },
+          {
+            "strategy": "decompose",
+            "label": "问题拆解",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "查询不是复合问题"
+          },
+          {
+            "strategy": "multi",
+            "label": "Multi-Query",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "单一查询已能覆盖需求"
+          },
+          {
+            "strategy": "stepback",
+            "label": "Step-back",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          },
+          {
+            "strategy": "hyde",
+            "label": "HyDE",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          }
+        ],
+        "workflow": [
+          {
+            "id": "understand",
+            "label": "查询理解",
+            "kind": "understand",
+            "depends_on": [],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "baseline",
+            "label": "对照组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "understand"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "rewritten",
+            "label": "改写组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "baseline"
+            ],
+            "status": "ok",
+            "elapsed_ms": 328
+          },
+          {
+            "id": "evaluate",
+            "label": "质量评估",
+            "kind": "evaluate",
+            "depends_on": [
+              "baseline",
+              "rewritten"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "fuse",
+            "label": "融合去重",
+            "kind": "fuse",
+            "depends_on": [
+              "evaluate"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          }
+        ],
+        "rewrites": [],
+        "arms": [
+          {
+            "arm": "baseline",
+            "queries": [
+              "年假和调休有啥不一样？"
+            ],
+            "metrics": {
+              "top1": 0.59364,
+              "above_tau": 0,
+              "docs": 5
+            },
+            "hit_count": 5
+          },
+          {
+            "arm": "rewritten",
+            "queries": [
+              "年假和调休有啥不一样？"
+            ],
+            "metrics": {
+              "top1": 0.593147,
+              "above_tau": 0,
+              "docs": 5
+            },
+            "hit_count": 5
+          }
+        ],
+        "evaluation": {
+          "verdict": "insufficient",
+          "lift": -0.000493,
+          "reason": "达到阈值的片段只有 0 条（要求 2 条）；最高分 0.593147 低于阈值 0.6"
+        },
+        "second_stage": {
+          "triggered": false,
+          "actions": [],
+          "new_chunks": 0,
+          "reason": "Allowlist 未开放 Multi-Query，未做补充检索，结果按低置信度返回"
+        },
+        "fusion": {
+          "method": "rrf",
+          "k": 60,
+          "before": 5,
+          "after": 5,
+          "items": [
+            {
+              "index": 1,
+              "chunk_id": "4d579ef4-7382-4c49-a105-92afc64df28e",
+              "document_id": "9270d8bf-b802-445c-8631-28d31f50b5f2",
+              "title": "调休与加班规定（benchmark）",
+              "version_no": 1,
+              "content": "工作日加班可按 1:1 申请调休；调休需在加班后三个月内使用，逾期作废，不可折算现金。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.59364,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 2,
+              "chunk_id": "26056405-fff0-4dd1-ade0-0927d5255cf5",
+              "document_id": "69b87685-d56b-47ae-b7d7-93c0980d4b72",
+              "title": "年假管理制度（benchmark）",
+              "version_no": 1,
+              "content": "员工入职满一年享有 5 天年假；累计工龄满十年享有 10 天年假；年假需提前三个工作日申请。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.586835,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 3,
+              "chunk_id": "27479bf9-6a12-4caf-b818-c09701b905f3",
+              "document_id": "98ba1494-cd3f-4465-9ebf-bf8a522949d2",
+              "title": "病假与事假规定（benchmark）",
+              "version_no": 1,
+              "content": "病假需提供二级以上医院证明；事假按天扣发当日工资，全年事假累计不超过 15 天。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.523474,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 4,
+              "chunk_id": "444e4d1d-d8dc-44da-a6ce-b9828944f41c",
+              "document_id": "76c7eb20-d952-49a2-9bdc-306605f381d5",
+              "title": "考勤与请假流程（benchmark）",
+              "version_no": 1,
+              "content": "请假需在考勤系统提交申请，由直属主管审批；连续请假超过三天需部门负责人复核。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.4132,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 5,
+              "chunk_id": "5cade0e1-e2c3-46cb-9321-d43133901d65",
+              "document_id": "172410ed-7df0-4674-a22e-02ed559164b3",
+              "title": "差旅报销标准（benchmark）",
+              "version_no": 1,
+              "content": "出差住宿一线城市每晚不超过 600 元；差旅报销需在行程结束后 30 天内提交发票。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.286898,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            }
+          ]
+        },
+        "totals": {
+          "llm_calls": 1,
+          "embed_calls": 2,
+          "retrieval_calls": 2,
+          "elapsed_ms": 5966
+        },
+        "degraded": false,
+        "warnings": [
+          "补充检索后仍不足：达到阈值的片段只有 0 条（要求 2 条）；最高分 0.593147 低于阈值 0.6"
+        ]
+      }
+    },
+    {
+      "config": "off",
+      "question": "q3",
+      "trace": {
+        "request": {
+          "query": "出差回来报销和年假没休完折算这两件事分别怎么弄？",
+          "mode": "auto",
+          "allowlist": [],
+          "budget": 1,
+          "quality_threshold": 0.6,
+          "top_k": 5,
+          "doc_type": null,
+          "history_turns": 0
+        },
+        "understanding": {
+          "intent": "分别查询出差回来报销和年假没休完折算的办理方式",
+          "complexity": "medium",
+          "entities": [
+            "出差回来报销",
+            "年假没休完折算"
+          ],
+          "references": [
+            {
+              "cue": "这两件事",
+              "resolved": false,
+              "reason": "指代出差回来报销和年假没休完折算"
+            }
+          ],
+          "constraints": [
+            "分别"
+          ],
+          "candidate_strategies": [
+            "semantic",
+            "entity",
+            "decompose",
+            "multi",
+            "context"
+          ],
+          "source": "llm",
+          "degraded": false
+        },
+        "routing": [
+          {
+            "strategy": "context",
+            "label": "上下文改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现指代线索"
+          },
+          {
+            "strategy": "entity",
+            "label": "实体标准化",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现需要标准化的别名"
+          },
+          {
+            "strategy": "semantic",
+            "label": "语义改写",
+            "kind": "text",
+            "decision": "blocked_by_allowlist",
+            "evidence": [
+              "表达线索：怎么弄"
+            ],
+            "reason": "命中规则信号，但不在本次允许列表内"
+          },
+          {
+            "strategy": "decompose",
+            "label": "问题拆解",
+            "kind": "expand",
+            "decision": "blocked_by_allowlist",
+            "evidence": [
+              "复合线索：分别"
+            ],
+            "reason": "命中规则信号，但不在本次允许列表内"
+          },
+          {
+            "strategy": "multi",
+            "label": "Multi-Query",
+            "kind": "expand",
+            "decision": "blocked_by_allowlist",
+            "evidence": [
+              "覆盖线索：分别"
+            ],
+            "reason": "命中规则信号，但不在本次允许列表内"
+          },
+          {
+            "strategy": "stepback",
+            "label": "Step-back",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          },
+          {
+            "strategy": "hyde",
+            "label": "HyDE",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          }
+        ],
+        "workflow": [
+          {
+            "id": "understand",
+            "label": "查询理解",
+            "kind": "understand",
+            "depends_on": [],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "baseline",
+            "label": "对照组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "understand"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "rewritten",
+            "label": "改写组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "baseline"
+            ],
+            "status": "ok",
+            "elapsed_ms": 267
+          },
+          {
+            "id": "evaluate",
+            "label": "质量评估",
+            "kind": "evaluate",
+            "depends_on": [
+              "baseline",
+              "rewritten"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "fuse",
+            "label": "融合去重",
+            "kind": "fuse",
+            "depends_on": [
+              "evaluate"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          }
+        ],
+        "rewrites": [],
+        "arms": [
+          {
+            "arm": "baseline",
+            "queries": [
+              "出差回来报销和年假没休完折算这两件事分别怎么弄？"
+            ],
+            "metrics": {
+              "top1": 0.562173,
+              "above_tau": 0,
+              "docs": 5
+            },
+            "hit_count": 5
+          },
+          {
+            "arm": "rewritten",
+            "queries": [
+              "出差回来报销和年假没休完折算这两件事分别怎么弄？"
+            ],
+            "metrics": {
+              "top1": 0.561908,
+              "above_tau": 0,
+              "docs": 5
+            },
+            "hit_count": 5
+          }
+        ],
+        "evaluation": {
+          "verdict": "insufficient",
+          "lift": -0.000265,
+          "reason": "达到阈值的片段只有 0 条（要求 2 条）；最高分 0.561908 低于阈值 0.6"
+        },
+        "second_stage": {
+          "triggered": false,
+          "actions": [],
+          "new_chunks": 0,
+          "reason": "Allowlist 未开放 Multi-Query，未做补充检索，结果按低置信度返回"
+        },
+        "fusion": {
+          "method": "rrf",
+          "k": 60,
+          "before": 5,
+          "after": 5,
+          "items": [
+            {
+              "index": 1,
+              "chunk_id": "5cade0e1-e2c3-46cb-9321-d43133901d65",
+              "document_id": "172410ed-7df0-4674-a22e-02ed559164b3",
+              "title": "差旅报销标准（benchmark）",
+              "version_no": 1,
+              "content": "出差住宿一线城市每晚不超过 600 元；差旅报销需在行程结束后 30 天内提交发票。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.562173,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 2,
+              "chunk_id": "4d579ef4-7382-4c49-a105-92afc64df28e",
+              "document_id": "9270d8bf-b802-445c-8631-28d31f50b5f2",
+              "title": "调休与加班规定（benchmark）",
+              "version_no": 1,
+              "content": "工作日加班可按 1:1 申请调休；调休需在加班后三个月内使用，逾期作废，不可折算现金。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.516224,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 3,
+              "chunk_id": "26056405-fff0-4dd1-ade0-0927d5255cf5",
+              "document_id": "69b87685-d56b-47ae-b7d7-93c0980d4b72",
+              "title": "年假管理制度（benchmark）",
+              "version_no": 1,
+              "content": "员工入职满一年享有 5 天年假；累计工龄满十年享有 10 天年假；年假需提前三个工作日申请。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.492247,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 4,
+              "chunk_id": "27479bf9-6a12-4caf-b818-c09701b905f3",
+              "document_id": "98ba1494-cd3f-4465-9ebf-bf8a522949d2",
+              "title": "病假与事假规定（benchmark）",
+              "version_no": 1,
+              "content": "病假需提供二级以上医院证明；事假按天扣发当日工资，全年事假累计不超过 15 天。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.483604,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 5,
+              "chunk_id": "444e4d1d-d8dc-44da-a6ce-b9828944f41c",
+              "document_id": "76c7eb20-d952-49a2-9bdc-306605f381d5",
+              "title": "考勤与请假流程（benchmark）",
+              "version_no": 1,
+              "content": "请假需在考勤系统提交申请，由直属主管审批；连续请假超过三天需部门负责人复核。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.434428,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            }
+          ]
+        },
+        "totals": {
+          "llm_calls": 1,
+          "embed_calls": 2,
+          "retrieval_calls": 2,
+          "elapsed_ms": 13961
+        },
+        "degraded": false,
+        "warnings": [
+          "补充检索后仍不足：达到阈值的片段只有 0 条（要求 2 条）；最高分 0.561908 低于阈值 0.6"
+        ]
+      }
+    },
+    {
+      "config": "off",
+      "question": "q4",
+      "trace": {
+        "request": {
+          "query": "《员工手册》里请假的规定？",
+          "mode": "auto",
+          "allowlist": [],
+          "budget": 1,
+          "quality_threshold": 0.6,
+          "top_k": 5,
+          "doc_type": null,
+          "history_turns": 0
+        },
+        "understanding": {
+          "intent": "查询《员工手册》中关于请假的规定",
+          "complexity": "low",
+          "entities": [
+            "员工手册",
+            "《员工手册》",
+            "请假",
+            "规定"
+          ],
+          "references": [],
+          "constraints": [],
+          "candidate_strategies": [
+            "semantic",
+            "entity"
+          ],
+          "source": "llm",
+          "degraded": false
+        },
+        "routing": [
+          {
+            "strategy": "context",
+            "label": "上下文改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现指代线索"
+          },
+          {
+            "strategy": "entity",
+            "label": "实体标准化",
+            "kind": "text",
+            "decision": "blocked_by_allowlist",
+            "evidence": [
+              "别名候选：员工手册"
+            ],
+            "reason": "命中规则信号，但不在本次允许列表内"
+          },
+          {
+            "strategy": "semantic",
+            "label": "语义改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "表达已足够检索友好"
+          },
+          {
+            "strategy": "decompose",
+            "label": "问题拆解",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "查询不是复合问题"
+          },
+          {
+            "strategy": "multi",
+            "label": "Multi-Query",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "单一查询已能覆盖需求"
+          },
+          {
+            "strategy": "stepback",
+            "label": "Step-back",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          },
+          {
+            "strategy": "hyde",
+            "label": "HyDE",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          }
+        ],
+        "workflow": [
+          {
+            "id": "understand",
+            "label": "查询理解",
+            "kind": "understand",
+            "depends_on": [],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "baseline",
+            "label": "对照组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "understand"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "rewritten",
+            "label": "改写组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "baseline"
+            ],
+            "status": "ok",
+            "elapsed_ms": 276
+          },
+          {
+            "id": "evaluate",
+            "label": "质量评估",
+            "kind": "evaluate",
+            "depends_on": [
+              "baseline",
+              "rewritten"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "fuse",
+            "label": "融合去重",
+            "kind": "fuse",
+            "depends_on": [
+              "evaluate"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          }
+        ],
+        "rewrites": [],
+        "arms": [
+          {
+            "arm": "baseline",
+            "queries": [
+              "《员工手册》里请假的规定？"
+            ],
+            "metrics": {
+              "top1": 0.711502,
+              "above_tau": 3,
+              "docs": 5
+            },
+            "hit_count": 5
+          },
+          {
+            "arm": "rewritten",
+            "queries": [
+              "《员工手册》里请假的规定？"
+            ],
+            "metrics": {
+              "top1": 0.711471,
+              "above_tau": 3,
+              "docs": 5
+            },
+            "hit_count": 5
+          }
+        ],
+        "evaluation": {
+          "verdict": "sufficient",
+          "lift": -3.1e-05,
+          "reason": "改写组 3 条片段达到阈值 0.6，最高分 0.711471"
+        },
+        "second_stage": {
+          "triggered": false,
+          "actions": [],
+          "new_chunks": 0,
+          "reason": ""
+        },
+        "fusion": {
+          "method": "rrf",
+          "k": 60,
+          "before": 5,
+          "after": 5,
+          "items": [
+            {
+              "index": 1,
+              "chunk_id": "27479bf9-6a12-4caf-b818-c09701b905f3",
+              "document_id": "98ba1494-cd3f-4465-9ebf-bf8a522949d2",
+              "title": "病假与事假规定（benchmark）",
+              "version_no": 1,
+              "content": "病假需提供二级以上医院证明；事假按天扣发当日工资，全年事假累计不超过 15 天。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.711502,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 2,
+              "chunk_id": "444e4d1d-d8dc-44da-a6ce-b9828944f41c",
+              "document_id": "76c7eb20-d952-49a2-9bdc-306605f381d5",
+              "title": "考勤与请假流程（benchmark）",
+              "version_no": 1,
+              "content": "请假需在考勤系统提交申请，由直属主管审批；连续请假超过三天需部门负责人复核。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.656562,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 3,
+              "chunk_id": "26056405-fff0-4dd1-ade0-0927d5255cf5",
+              "document_id": "69b87685-d56b-47ae-b7d7-93c0980d4b72",
+              "title": "年假管理制度（benchmark）",
+              "version_no": 1,
+              "content": "员工入职满一年享有 5 天年假；累计工龄满十年享有 10 天年假；年假需提前三个工作日申请。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.648863,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 4,
+              "chunk_id": "4d579ef4-7382-4c49-a105-92afc64df28e",
+              "document_id": "9270d8bf-b802-445c-8631-28d31f50b5f2",
+              "title": "调休与加班规定（benchmark）",
+              "version_no": 1,
+              "content": "工作日加班可按 1:1 申请调休；调休需在加班后三个月内使用，逾期作废，不可折算现金。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.547029,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 5,
+              "chunk_id": "cf27043c-cd87-4808-a0a7-61881211c226",
+              "document_id": "7c5a9398-d065-4615-9b0a-3ecf37361e57",
+              "title": "新员工入职指引（benchmark）",
+              "version_no": 1,
+              "content": "新员工入职需提交身份证、学历证明与离职证明；入职当月即缴纳社保与公积金。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.424,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            }
+          ]
+        },
+        "totals": {
+          "llm_calls": 1,
+          "embed_calls": 2,
+          "retrieval_calls": 2,
+          "elapsed_ms": 4321
+        },
+        "degraded": false,
+        "warnings": []
+      }
+    },
+    {
+      "config": "off",
+      "question": "q5",
+      "trace": {
+        "request": {
+          "query": "满十年工龄年假多少天？",
+          "mode": "auto",
+          "allowlist": [],
+          "budget": 1,
+          "quality_threshold": 0.6,
+          "top_k": 5,
+          "doc_type": null,
+          "history_turns": 0
+        },
+        "understanding": {
+          "intent": "查询工龄满十年对应的年假天数",
+          "complexity": "low",
+          "entities": [
+            "十年工龄",
+            "年假"
+          ],
+          "references": [],
+          "constraints": [
+            "满十年工龄"
+          ],
+          "candidate_strategies": [
+            "semantic",
+            "entity"
+          ],
+          "source": "llm",
+          "degraded": false
+        },
+        "routing": [
+          {
+            "strategy": "context",
+            "label": "上下文改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现指代线索"
+          },
+          {
+            "strategy": "entity",
+            "label": "实体标准化",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现需要标准化的别名"
+          },
+          {
+            "strategy": "semantic",
+            "label": "语义改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "表达已足够检索友好"
+          },
+          {
+            "strategy": "decompose",
+            "label": "问题拆解",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "查询不是复合问题"
+          },
+          {
+            "strategy": "multi",
+            "label": "Multi-Query",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "单一查询已能覆盖需求"
+          },
+          {
+            "strategy": "stepback",
+            "label": "Step-back",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          },
+          {
+            "strategy": "hyde",
+            "label": "HyDE",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          }
+        ],
+        "workflow": [
+          {
+            "id": "understand",
+            "label": "查询理解",
+            "kind": "understand",
+            "depends_on": [],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "baseline",
+            "label": "对照组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "understand"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "rewritten",
+            "label": "改写组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "baseline"
+            ],
+            "status": "ok",
+            "elapsed_ms": 251
+          },
+          {
+            "id": "evaluate",
+            "label": "质量评估",
+            "kind": "evaluate",
+            "depends_on": [
+              "baseline",
+              "rewritten"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "fuse",
+            "label": "融合去重",
+            "kind": "fuse",
+            "depends_on": [
+              "evaluate"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          }
+        ],
+        "rewrites": [],
+        "arms": [
+          {
+            "arm": "baseline",
+            "queries": [
+              "满十年工龄年假多少天？"
+            ],
+            "metrics": {
+              "top1": 0.793005,
+              "above_tau": 1,
+              "docs": 5
+            },
+            "hit_count": 5
+          },
+          {
+            "arm": "rewritten",
+            "queries": [
+              "满十年工龄年假多少天？"
+            ],
+            "metrics": {
+              "top1": 0.793028,
+              "above_tau": 1,
+              "docs": 5
+            },
+            "hit_count": 5
+          }
+        ],
+        "evaluation": {
+          "verdict": "insufficient",
+          "lift": 2.3e-05,
+          "reason": "达到阈值的片段只有 1 条（要求 2 条）"
+        },
+        "second_stage": {
+          "triggered": false,
+          "actions": [],
+          "new_chunks": 0,
+          "reason": "Allowlist 未开放 Multi-Query，未做补充检索，结果按低置信度返回"
+        },
+        "fusion": {
+          "method": "rrf",
+          "k": 60,
+          "before": 5,
+          "after": 5,
+          "items": [
+            {
+              "index": 1,
+              "chunk_id": "26056405-fff0-4dd1-ade0-0927d5255cf5",
+              "document_id": "69b87685-d56b-47ae-b7d7-93c0980d4b72",
+              "title": "年假管理制度（benchmark）",
+              "version_no": 1,
+              "content": "员工入职满一年享有 5 天年假；累计工龄满十年享有 10 天年假；年假需提前三个工作日申请。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.793028,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 2,
+              "chunk_id": "27479bf9-6a12-4caf-b818-c09701b905f3",
+              "document_id": "98ba1494-cd3f-4465-9ebf-bf8a522949d2",
+              "title": "病假与事假规定（benchmark）",
+              "version_no": 1,
+              "content": "病假需提供二级以上医院证明；事假按天扣发当日工资，全年事假累计不超过 15 天。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.58103,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 3,
+              "chunk_id": "4d579ef4-7382-4c49-a105-92afc64df28e",
+              "document_id": "9270d8bf-b802-445c-8631-28d31f50b5f2",
+              "title": "调休与加班规定（benchmark）",
+              "version_no": 1,
+              "content": "工作日加班可按 1:1 申请调休；调休需在加班后三个月内使用，逾期作废，不可折算现金。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.476823,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 4,
+              "chunk_id": "444e4d1d-d8dc-44da-a6ce-b9828944f41c",
+              "document_id": "76c7eb20-d952-49a2-9bdc-306605f381d5",
+              "title": "考勤与请假流程（benchmark）",
+              "version_no": 1,
+              "content": "请假需在考勤系统提交申请，由直属主管审批；连续请假超过三天需部门负责人复核。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.439834,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 5,
+              "chunk_id": "cf27043c-cd87-4808-a0a7-61881211c226",
+              "document_id": "7c5a9398-d065-4615-9b0a-3ecf37361e57",
+              "title": "新员工入职指引（benchmark）",
+              "version_no": 1,
+              "content": "新员工入职需提交身份证、学历证明与离职证明；入职当月即缴纳社保与公积金。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.344788,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            }
+          ]
+        },
+        "totals": {
+          "llm_calls": 1,
+          "embed_calls": 2,
+          "retrieval_calls": 2,
+          "elapsed_ms": 5585
+        },
+        "degraded": false,
+        "warnings": [
+          "补充检索后仍不足：达到阈值的片段只有 1 条（要求 2 条）"
+        ]
+      }
+    },
+    {
+      "config": "semantic",
+      "question": "q1",
+      "trace": {
+        "request": {
+          "query": "它怎么算？",
+          "mode": "auto",
+          "allowlist": [
+            "semantic"
+          ],
+          "budget": 2,
+          "quality_threshold": 0.6,
+          "top_k": 5,
+          "doc_type": null,
+          "history_turns": 1
+        },
+        "understanding": {
+          "intent": "用户想询问年假的计算方式",
+          "complexity": "low",
+          "entities": [],
+          "references": [
+            {
+              "cue": "它",
+              "resolved": true,
+              "reason": "已按对话历史消解"
+            }
+          ],
+          "constraints": [],
+          "candidate_strategies": [
+            "semantic",
+            "context"
+          ],
+          "source": "llm",
+          "degraded": false
+        },
+        "routing": [
+          {
+            "strategy": "context",
+            "label": "上下文改写",
+            "kind": "text",
+            "decision": "blocked_by_allowlist",
+            "evidence": [
+              "指代线索：它"
+            ],
+            "reason": "命中规则信号，但不在本次允许列表内"
+          },
+          {
+            "strategy": "entity",
+            "label": "实体标准化",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现需要标准化的别名"
+          },
+          {
+            "strategy": "semantic",
+            "label": "语义改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "表达已足够检索友好"
+          },
+          {
+            "strategy": "decompose",
+            "label": "问题拆解",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "查询不是复合问题"
+          },
+          {
+            "strategy": "multi",
+            "label": "Multi-Query",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "单一查询已能覆盖需求"
+          },
+          {
+            "strategy": "stepback",
+            "label": "Step-back",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          },
+          {
+            "strategy": "hyde",
+            "label": "HyDE",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          }
+        ],
+        "workflow": [
+          {
+            "id": "understand",
+            "label": "查询理解",
+            "kind": "understand",
+            "depends_on": [],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "baseline",
+            "label": "对照组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "understand"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "rewritten",
+            "label": "改写组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "baseline"
+            ],
+            "status": "ok",
+            "elapsed_ms": 272
+          },
+          {
+            "id": "evaluate",
+            "label": "质量评估",
+            "kind": "evaluate",
+            "depends_on": [
+              "baseline",
+              "rewritten"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "fuse",
+            "label": "融合去重",
+            "kind": "fuse",
+            "depends_on": [
+              "evaluate"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          }
+        ],
+        "rewrites": [],
+        "arms": [
+          {
+            "arm": "baseline",
+            "queries": [
+              "它怎么算？"
+            ],
+            "metrics": {
+              "top1": 0.310634,
+              "above_tau": 0,
+              "docs": 5
+            },
+            "hit_count": 5
+          },
+          {
+            "arm": "rewritten",
+            "queries": [
+              "它怎么算？"
+            ],
+            "metrics": {
+              "top1": 0.310248,
+              "above_tau": 0,
+              "docs": 5
+            },
+            "hit_count": 5
+          }
+        ],
+        "evaluation": {
+          "verdict": "insufficient",
+          "lift": -0.000386,
+          "reason": "达到阈值的片段只有 0 条（要求 2 条）；最高分 0.310248 低于阈值 0.6"
+        },
+        "second_stage": {
+          "triggered": false,
+          "actions": [],
+          "new_chunks": 0,
+          "reason": "Allowlist 未开放 Multi-Query，未做补充检索，结果按低置信度返回"
+        },
+        "fusion": {
+          "method": "rrf",
+          "k": 60,
+          "before": 5,
+          "after": 5,
+          "items": [
+            {
+              "index": 1,
+              "chunk_id": "4d579ef4-7382-4c49-a105-92afc64df28e",
+              "document_id": "9270d8bf-b802-445c-8631-28d31f50b5f2",
+              "title": "调休与加班规定（benchmark）",
+              "version_no": 1,
+              "content": "工作日加班可按 1:1 申请调休；调休需在加班后三个月内使用，逾期作废，不可折算现金。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.310634,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 2,
+              "chunk_id": "27479bf9-6a12-4caf-b818-c09701b905f3",
+              "document_id": "98ba1494-cd3f-4465-9ebf-bf8a522949d2",
+              "title": "病假与事假规定（benchmark）",
+              "version_no": 1,
+              "content": "病假需提供二级以上医院证明；事假按天扣发当日工资，全年事假累计不超过 15 天。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.306748,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 3,
+              "chunk_id": "5cade0e1-e2c3-46cb-9321-d43133901d65",
+              "document_id": "172410ed-7df0-4674-a22e-02ed559164b3",
+              "title": "差旅报销标准（benchmark）",
+              "version_no": 1,
+              "content": "出差住宿一线城市每晚不超过 600 元；差旅报销需在行程结束后 30 天内提交发票。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.297508,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 4,
+              "chunk_id": "26056405-fff0-4dd1-ade0-0927d5255cf5",
+              "document_id": "69b87685-d56b-47ae-b7d7-93c0980d4b72",
+              "title": "年假管理制度（benchmark）",
+              "version_no": 1,
+              "content": "员工入职满一年享有 5 天年假；累计工龄满十年享有 10 天年假；年假需提前三个工作日申请。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.293757,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 5,
+              "chunk_id": "444e4d1d-d8dc-44da-a6ce-b9828944f41c",
+              "document_id": "76c7eb20-d952-49a2-9bdc-306605f381d5",
+              "title": "考勤与请假流程（benchmark）",
+              "version_no": 1,
+              "content": "请假需在考勤系统提交申请，由直属主管审批；连续请假超过三天需部门负责人复核。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.285728,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            }
+          ]
+        },
+        "totals": {
+          "llm_calls": 1,
+          "embed_calls": 2,
+          "retrieval_calls": 2,
+          "elapsed_ms": 5883
+        },
+        "degraded": false,
+        "warnings": [
+          "补充检索后仍不足：达到阈值的片段只有 0 条（要求 2 条）；最高分 0.310248 低于阈值 0.6"
+        ]
+      }
+    },
+    {
+      "config": "semantic",
+      "question": "q2",
+      "trace": {
+        "request": {
+          "query": "年假和调休有啥不一样？",
+          "mode": "auto",
+          "allowlist": [
+            "semantic"
+          ],
+          "budget": 2,
+          "quality_threshold": 0.6,
+          "top_k": 5,
+          "doc_type": null,
+          "history_turns": 0
+        },
+        "understanding": {
+          "intent": "用户想了解年假与调休的区别",
+          "complexity": "low",
+          "entities": [
+            "年假",
+            "调休"
+          ],
+          "references": [],
+          "constraints": [],
+          "candidate_strategies": [
+            "semantic",
+            "entity",
+            "decompose"
+          ],
+          "source": "llm",
+          "degraded": false
+        },
+        "routing": [
+          {
+            "strategy": "context",
+            "label": "上下文改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现指代线索"
+          },
+          {
+            "strategy": "entity",
+            "label": "实体标准化",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现需要标准化的别名"
+          },
+          {
+            "strategy": "semantic",
+            "label": "语义改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "表达已足够检索友好"
+          },
+          {
+            "strategy": "decompose",
+            "label": "问题拆解",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "查询不是复合问题"
+          },
+          {
+            "strategy": "multi",
+            "label": "Multi-Query",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "单一查询已能覆盖需求"
+          },
+          {
+            "strategy": "stepback",
+            "label": "Step-back",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          },
+          {
+            "strategy": "hyde",
+            "label": "HyDE",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          }
+        ],
+        "workflow": [
+          {
+            "id": "understand",
+            "label": "查询理解",
+            "kind": "understand",
+            "depends_on": [],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "baseline",
+            "label": "对照组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "understand"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "rewritten",
+            "label": "改写组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "baseline"
+            ],
+            "status": "ok",
+            "elapsed_ms": 310
+          },
+          {
+            "id": "evaluate",
+            "label": "质量评估",
+            "kind": "evaluate",
+            "depends_on": [
+              "baseline",
+              "rewritten"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "fuse",
+            "label": "融合去重",
+            "kind": "fuse",
+            "depends_on": [
+              "evaluate"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          }
+        ],
+        "rewrites": [],
+        "arms": [
+          {
+            "arm": "baseline",
+            "queries": [
+              "年假和调休有啥不一样？"
+            ],
+            "metrics": {
+              "top1": 0.593007,
+              "above_tau": 0,
+              "docs": 5
+            },
+            "hit_count": 5
+          },
+          {
+            "arm": "rewritten",
+            "queries": [
+              "年假和调休有啥不一样？"
+            ],
+            "metrics": {
+              "top1": 0.593285,
+              "above_tau": 0,
+              "docs": 5
+            },
+            "hit_count": 5
+          }
+        ],
+        "evaluation": {
+          "verdict": "insufficient",
+          "lift": 0.000278,
+          "reason": "达到阈值的片段只有 0 条（要求 2 条）；最高分 0.593285 低于阈值 0.6"
+        },
+        "second_stage": {
+          "triggered": false,
+          "actions": [],
+          "new_chunks": 0,
+          "reason": "Allowlist 未开放 Multi-Query，未做补充检索，结果按低置信度返回"
+        },
+        "fusion": {
+          "method": "rrf",
+          "k": 60,
+          "before": 5,
+          "after": 5,
+          "items": [
+            {
+              "index": 1,
+              "chunk_id": "4d579ef4-7382-4c49-a105-92afc64df28e",
+              "document_id": "9270d8bf-b802-445c-8631-28d31f50b5f2",
+              "title": "调休与加班规定（benchmark）",
+              "version_no": 1,
+              "content": "工作日加班可按 1:1 申请调休；调休需在加班后三个月内使用，逾期作废，不可折算现金。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.593285,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 2,
+              "chunk_id": "26056405-fff0-4dd1-ade0-0927d5255cf5",
+              "document_id": "69b87685-d56b-47ae-b7d7-93c0980d4b72",
+              "title": "年假管理制度（benchmark）",
+              "version_no": 1,
+              "content": "员工入职满一年享有 5 天年假；累计工龄满十年享有 10 天年假；年假需提前三个工作日申请。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.586498,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 3,
+              "chunk_id": "27479bf9-6a12-4caf-b818-c09701b905f3",
+              "document_id": "98ba1494-cd3f-4465-9ebf-bf8a522949d2",
+              "title": "病假与事假规定（benchmark）",
+              "version_no": 1,
+              "content": "病假需提供二级以上医院证明；事假按天扣发当日工资，全年事假累计不超过 15 天。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.52333,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 4,
+              "chunk_id": "444e4d1d-d8dc-44da-a6ce-b9828944f41c",
+              "document_id": "76c7eb20-d952-49a2-9bdc-306605f381d5",
+              "title": "考勤与请假流程（benchmark）",
+              "version_no": 1,
+              "content": "请假需在考勤系统提交申请，由直属主管审批；连续请假超过三天需部门负责人复核。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.412739,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 5,
+              "chunk_id": "5cade0e1-e2c3-46cb-9321-d43133901d65",
+              "document_id": "172410ed-7df0-4674-a22e-02ed559164b3",
+              "title": "差旅报销标准（benchmark）",
+              "version_no": 1,
+              "content": "出差住宿一线城市每晚不超过 600 元；差旅报销需在行程结束后 30 天内提交发票。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.286206,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            }
+          ]
+        },
+        "totals": {
+          "llm_calls": 1,
+          "embed_calls": 2,
+          "retrieval_calls": 2,
+          "elapsed_ms": 5103
+        },
+        "degraded": false,
+        "warnings": [
+          "补充检索后仍不足：达到阈值的片段只有 0 条（要求 2 条）；最高分 0.593285 低于阈值 0.6"
+        ]
+      }
+    },
+    {
+      "config": "semantic",
+      "question": "q3",
+      "trace": {
+        "request": {
+          "query": "出差回来报销和年假没休完折算这两件事分别怎么弄？",
+          "mode": "auto",
+          "allowlist": [
+            "semantic"
+          ],
+          "budget": 2,
+          "quality_threshold": 0.6,
+          "top_k": 5,
+          "doc_type": null,
+          "history_turns": 0
+        },
+        "understanding": {
+          "intent": "用户想了解出差回来报销和年假没休完折算这两件事分别如何办理",
+          "complexity": "medium",
+          "entities": [
+            "出差回来报销",
+            "年假没休完折算"
+          ],
+          "references": [
+            {
+              "cue": "这两件事",
+              "resolved": false,
+              "reason": "指代“出差回来报销”和“年假没休完折算”"
+            }
+          ],
+          "constraints": [
+            "出差回来报销",
+            "年假没休完折算",
+            "分别怎么弄"
+          ],
+          "candidate_strategies": [
+            "semantic",
+            "entity",
+            "decompose",
+            "multi"
+          ],
+          "source": "llm",
+          "degraded": false
+        },
+        "routing": [
+          {
+            "strategy": "context",
+            "label": "上下文改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现指代线索"
+          },
+          {
+            "strategy": "entity",
+            "label": "实体标准化",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现需要标准化的别名"
+          },
+          {
+            "strategy": "semantic",
+            "label": "语义改写",
+            "kind": "text",
+            "decision": "execute",
+            "evidence": [
+              "表达线索：怎么弄"
+            ],
+            "reason": "查询偏口语或概念型表达"
+          },
+          {
+            "strategy": "decompose",
+            "label": "问题拆解",
+            "kind": "expand",
+            "decision": "blocked_by_allowlist",
+            "evidence": [
+              "复合线索：分别"
+            ],
+            "reason": "命中规则信号，但不在本次允许列表内"
+          },
+          {
+            "strategy": "multi",
+            "label": "Multi-Query",
+            "kind": "expand",
+            "decision": "blocked_by_allowlist",
+            "evidence": [
+              "覆盖线索：分别"
+            ],
+            "reason": "命中规则信号，但不在本次允许列表内"
+          },
+          {
+            "strategy": "stepback",
+            "label": "Step-back",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          },
+          {
+            "strategy": "hyde",
+            "label": "HyDE",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          }
+        ],
+        "workflow": [
+          {
+            "id": "understand",
+            "label": "查询理解",
+            "kind": "understand",
+            "depends_on": [],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "baseline",
+            "label": "对照组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "understand"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "semantic",
+            "label": "语义改写",
+            "kind": "text",
+            "depends_on": [
+              "baseline"
+            ],
+            "status": "ok",
+            "elapsed_ms": 4671
+          },
+          {
+            "id": "rewritten",
+            "label": "改写组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "semantic"
+            ],
+            "status": "ok",
+            "elapsed_ms": 314
+          },
+          {
+            "id": "evaluate",
+            "label": "质量评估",
+            "kind": "evaluate",
+            "depends_on": [
+              "baseline",
+              "rewritten"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "fuse",
+            "label": "融合去重",
+            "kind": "fuse",
+            "depends_on": [
+              "evaluate"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          }
+        ],
+        "rewrites": [
+          {
+            "strategy": "semantic",
+            "label": "语义改写",
+            "status": "ok",
+            "text_in": "出差回来报销和年假没休完折算这两件事分别怎么弄？",
+            "text_out": "出差结束后费用报销与未休年假折算的办理方式分别是什么？",
+            "reason": "将口语化提问改写为检索式表达，明确两项事项并规范术语。"
+          }
+        ],
+        "arms": [
+          {
+            "arm": "baseline",
+            "queries": [
+              "出差回来报销和年假没休完折算这两件事分别怎么弄？"
+            ],
+            "metrics": {
+              "top1": 0.561997,
+              "above_tau": 0,
+              "docs": 5
+            },
+            "hit_count": 5
+          },
+          {
+            "arm": "rewritten",
+            "queries": [
+              "出差结束后费用报销与未休年假折算的办理方式分别是什么？"
+            ],
+            "metrics": {
+              "top1": 0.581775,
+              "above_tau": 0,
+              "docs": 5
+            },
+            "hit_count": 5
+          }
+        ],
+        "evaluation": {
+          "verdict": "insufficient",
+          "lift": 0.019778,
+          "reason": "达到阈值的片段只有 0 条（要求 2 条）；最高分 0.581775 低于阈值 0.6"
+        },
+        "second_stage": {
+          "triggered": false,
+          "actions": [],
+          "new_chunks": 0,
+          "reason": "Allowlist 未开放 Multi-Query，未做补充检索，结果按低置信度返回"
+        },
+        "fusion": {
+          "method": "rrf",
+          "k": 60,
+          "before": 5,
+          "after": 5,
+          "items": [
+            {
+              "index": 1,
+              "chunk_id": "5cade0e1-e2c3-46cb-9321-d43133901d65",
+              "document_id": "172410ed-7df0-4674-a22e-02ed559164b3",
+              "title": "差旅报销标准（benchmark）",
+              "version_no": 1,
+              "content": "出差住宿一线城市每晚不超过 600 元；差旅报销需在行程结束后 30 天内提交发票。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.581775,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 2,
+              "chunk_id": "4d579ef4-7382-4c49-a105-92afc64df28e",
+              "document_id": "9270d8bf-b802-445c-8631-28d31f50b5f2",
+              "title": "调休与加班规定（benchmark）",
+              "version_no": 1,
+              "content": "工作日加班可按 1:1 申请调休；调休需在加班后三个月内使用，逾期作废，不可折算现金。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.520883,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 3,
+              "chunk_id": "26056405-fff0-4dd1-ade0-0927d5255cf5",
+              "document_id": "69b87685-d56b-47ae-b7d7-93c0980d4b72",
+              "title": "年假管理制度（benchmark）",
+              "version_no": 1,
+              "content": "员工入职满一年享有 5 天年假；累计工龄满十年享有 10 天年假；年假需提前三个工作日申请。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.492066,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 4,
+              "chunk_id": "27479bf9-6a12-4caf-b818-c09701b905f3",
+              "document_id": "98ba1494-cd3f-4465-9ebf-bf8a522949d2",
+              "title": "病假与事假规定（benchmark）",
+              "version_no": 1,
+              "content": "病假需提供二级以上医院证明；事假按天扣发当日工资，全年事假累计不超过 15 天。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.489219,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 5,
+              "chunk_id": "444e4d1d-d8dc-44da-a6ce-b9828944f41c",
+              "document_id": "76c7eb20-d952-49a2-9bdc-306605f381d5",
+              "title": "考勤与请假流程（benchmark）",
+              "version_no": 1,
+              "content": "请假需在考勤系统提交申请，由直属主管审批；连续请假超过三天需部门负责人复核。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.436092,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            }
+          ]
+        },
+        "totals": {
+          "llm_calls": 2,
+          "embed_calls": 2,
+          "retrieval_calls": 2,
+          "elapsed_ms": 15836
+        },
+        "degraded": false,
+        "warnings": [
+          "补充检索后仍不足：达到阈值的片段只有 0 条（要求 2 条）；最高分 0.581775 低于阈值 0.6"
+        ]
+      }
+    },
+    {
+      "config": "semantic",
+      "question": "q4",
+      "trace": {
+        "request": {
+          "query": "《员工手册》里请假的规定？",
+          "mode": "auto",
+          "allowlist": [
+            "semantic"
+          ],
+          "budget": 2,
+          "quality_threshold": 0.6,
+          "top_k": 5,
+          "doc_type": null,
+          "history_turns": 0
+        },
+        "understanding": {
+          "intent": "查询《员工手册》中关于请假的规定",
+          "complexity": "medium",
+          "entities": [
+            "员工手册",
+            "《员工手册》",
+            "请假"
+          ],
+          "references": [],
+          "constraints": [
+            "来源限定为《员工手册》"
+          ],
+          "candidate_strategies": [
+            "semantic",
+            "entity"
+          ],
+          "source": "llm",
+          "degraded": false
+        },
+        "routing": [
+          {
+            "strategy": "context",
+            "label": "上下文改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现指代线索"
+          },
+          {
+            "strategy": "entity",
+            "label": "实体标准化",
+            "kind": "text",
+            "decision": "blocked_by_allowlist",
+            "evidence": [
+              "别名候选：员工手册"
+            ],
+            "reason": "命中规则信号，但不在本次允许列表内"
+          },
+          {
+            "strategy": "semantic",
+            "label": "语义改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "表达已足够检索友好"
+          },
+          {
+            "strategy": "decompose",
+            "label": "问题拆解",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "查询不是复合问题"
+          },
+          {
+            "strategy": "multi",
+            "label": "Multi-Query",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "单一查询已能覆盖需求"
+          },
+          {
+            "strategy": "stepback",
+            "label": "Step-back",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          },
+          {
+            "strategy": "hyde",
+            "label": "HyDE",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          }
+        ],
+        "workflow": [
+          {
+            "id": "understand",
+            "label": "查询理解",
+            "kind": "understand",
+            "depends_on": [],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "baseline",
+            "label": "对照组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "understand"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "rewritten",
+            "label": "改写组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "baseline"
+            ],
+            "status": "ok",
+            "elapsed_ms": 326
+          },
+          {
+            "id": "evaluate",
+            "label": "质量评估",
+            "kind": "evaluate",
+            "depends_on": [
+              "baseline",
+              "rewritten"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "fuse",
+            "label": "融合去重",
+            "kind": "fuse",
+            "depends_on": [
+              "evaluate"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          }
+        ],
+        "rewrites": [],
+        "arms": [
+          {
+            "arm": "baseline",
+            "queries": [
+              "《员工手册》里请假的规定？"
+            ],
+            "metrics": {
+              "top1": 0.712254,
+              "above_tau": 3,
+              "docs": 5
+            },
+            "hit_count": 5
+          },
+          {
+            "arm": "rewritten",
+            "queries": [
+              "《员工手册》里请假的规定？"
+            ],
+            "metrics": {
+              "top1": 0.711592,
+              "above_tau": 3,
+              "docs": 5
+            },
+            "hit_count": 5
+          }
+        ],
+        "evaluation": {
+          "verdict": "sufficient",
+          "lift": -0.000662,
+          "reason": "改写组 3 条片段达到阈值 0.6，最高分 0.711592"
+        },
+        "second_stage": {
+          "triggered": false,
+          "actions": [],
+          "new_chunks": 0,
+          "reason": ""
+        },
+        "fusion": {
+          "method": "rrf",
+          "k": 60,
+          "before": 5,
+          "after": 5,
+          "items": [
+            {
+              "index": 1,
+              "chunk_id": "27479bf9-6a12-4caf-b818-c09701b905f3",
+              "document_id": "98ba1494-cd3f-4465-9ebf-bf8a522949d2",
+              "title": "病假与事假规定（benchmark）",
+              "version_no": 1,
+              "content": "病假需提供二级以上医院证明；事假按天扣发当日工资，全年事假累计不超过 15 天。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.712254,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 2,
+              "chunk_id": "444e4d1d-d8dc-44da-a6ce-b9828944f41c",
+              "document_id": "76c7eb20-d952-49a2-9bdc-306605f381d5",
+              "title": "考勤与请假流程（benchmark）",
+              "version_no": 1,
+              "content": "请假需在考勤系统提交申请，由直属主管审批；连续请假超过三天需部门负责人复核。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.656588,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 3,
+              "chunk_id": "26056405-fff0-4dd1-ade0-0927d5255cf5",
+              "document_id": "69b87685-d56b-47ae-b7d7-93c0980d4b72",
+              "title": "年假管理制度（benchmark）",
+              "version_no": 1,
+              "content": "员工入职满一年享有 5 天年假；累计工龄满十年享有 10 天年假；年假需提前三个工作日申请。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.649086,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 4,
+              "chunk_id": "4d579ef4-7382-4c49-a105-92afc64df28e",
+              "document_id": "9270d8bf-b802-445c-8631-28d31f50b5f2",
+              "title": "调休与加班规定（benchmark）",
+              "version_no": 1,
+              "content": "工作日加班可按 1:1 申请调休；调休需在加班后三个月内使用，逾期作废，不可折算现金。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.547458,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 5,
+              "chunk_id": "cf27043c-cd87-4808-a0a7-61881211c226",
+              "document_id": "7c5a9398-d065-4615-9b0a-3ecf37361e57",
+              "title": "新员工入职指引（benchmark）",
+              "version_no": 1,
+              "content": "新员工入职需提交身份证、学历证明与离职证明；入职当月即缴纳社保与公积金。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.423655,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            }
+          ]
+        },
+        "totals": {
+          "llm_calls": 1,
+          "embed_calls": 2,
+          "retrieval_calls": 2,
+          "elapsed_ms": 5786
+        },
+        "degraded": false,
+        "warnings": []
+      }
+    },
+    {
+      "config": "semantic",
+      "question": "q5",
+      "trace": {
+        "request": {
+          "query": "满十年工龄年假多少天？",
+          "mode": "auto",
+          "allowlist": [
+            "semantic"
+          ],
+          "budget": 2,
+          "quality_threshold": 0.6,
+          "top_k": 5,
+          "doc_type": null,
+          "history_turns": 0
+        },
+        "understanding": {
+          "intent": "查询满十年工龄对应的年假天数",
+          "complexity": "low",
+          "entities": [
+            "满十年工龄",
+            "年假"
+          ],
+          "references": [],
+          "constraints": [
+            "满十年工龄"
+          ],
+          "candidate_strategies": [
+            "semantic",
+            "entity"
+          ],
+          "source": "llm",
+          "degraded": false
+        },
+        "routing": [
+          {
+            "strategy": "context",
+            "label": "上下文改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现指代线索"
+          },
+          {
+            "strategy": "entity",
+            "label": "实体标准化",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现需要标准化的别名"
+          },
+          {
+            "strategy": "semantic",
+            "label": "语义改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "表达已足够检索友好"
+          },
+          {
+            "strategy": "decompose",
+            "label": "问题拆解",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "查询不是复合问题"
+          },
+          {
+            "strategy": "multi",
+            "label": "Multi-Query",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "单一查询已能覆盖需求"
+          },
+          {
+            "strategy": "stepback",
+            "label": "Step-back",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          },
+          {
+            "strategy": "hyde",
+            "label": "HyDE",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          }
+        ],
+        "workflow": [
+          {
+            "id": "understand",
+            "label": "查询理解",
+            "kind": "understand",
+            "depends_on": [],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "baseline",
+            "label": "对照组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "understand"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "rewritten",
+            "label": "改写组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "baseline"
+            ],
+            "status": "ok",
+            "elapsed_ms": 295
+          },
+          {
+            "id": "evaluate",
+            "label": "质量评估",
+            "kind": "evaluate",
+            "depends_on": [
+              "baseline",
+              "rewritten"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "fuse",
+            "label": "融合去重",
+            "kind": "fuse",
+            "depends_on": [
+              "evaluate"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          }
+        ],
+        "rewrites": [],
+        "arms": [
+          {
+            "arm": "baseline",
+            "queries": [
+              "满十年工龄年假多少天？"
+            ],
+            "metrics": {
+              "top1": 0.792858,
+              "above_tau": 1,
+              "docs": 5
+            },
+            "hit_count": 5
+          },
+          {
+            "arm": "rewritten",
+            "queries": [
+              "满十年工龄年假多少天？"
+            ],
+            "metrics": {
+              "top1": 0.792599,
+              "above_tau": 1,
+              "docs": 5
+            },
+            "hit_count": 5
+          }
+        ],
+        "evaluation": {
+          "verdict": "insufficient",
+          "lift": -0.000259,
+          "reason": "达到阈值的片段只有 1 条（要求 2 条）"
+        },
+        "second_stage": {
+          "triggered": false,
+          "actions": [],
+          "new_chunks": 0,
+          "reason": "Allowlist 未开放 Multi-Query，未做补充检索，结果按低置信度返回"
+        },
+        "fusion": {
+          "method": "rrf",
+          "k": 60,
+          "before": 5,
+          "after": 5,
+          "items": [
+            {
+              "index": 1,
+              "chunk_id": "26056405-fff0-4dd1-ade0-0927d5255cf5",
+              "document_id": "69b87685-d56b-47ae-b7d7-93c0980d4b72",
+              "title": "年假管理制度（benchmark）",
+              "version_no": 1,
+              "content": "员工入职满一年享有 5 天年假；累计工龄满十年享有 10 天年假；年假需提前三个工作日申请。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.792858,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 2,
+              "chunk_id": "27479bf9-6a12-4caf-b818-c09701b905f3",
+              "document_id": "98ba1494-cd3f-4465-9ebf-bf8a522949d2",
+              "title": "病假与事假规定（benchmark）",
+              "version_no": 1,
+              "content": "病假需提供二级以上医院证明；事假按天扣发当日工资，全年事假累计不超过 15 天。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.580552,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 3,
+              "chunk_id": "4d579ef4-7382-4c49-a105-92afc64df28e",
+              "document_id": "9270d8bf-b802-445c-8631-28d31f50b5f2",
+              "title": "调休与加班规定（benchmark）",
+              "version_no": 1,
+              "content": "工作日加班可按 1:1 申请调休；调休需在加班后三个月内使用，逾期作废，不可折算现金。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.47606,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 4,
+              "chunk_id": "444e4d1d-d8dc-44da-a6ce-b9828944f41c",
+              "document_id": "76c7eb20-d952-49a2-9bdc-306605f381d5",
+              "title": "考勤与请假流程（benchmark）",
+              "version_no": 1,
+              "content": "请假需在考勤系统提交申请，由直属主管审批；连续请假超过三天需部门负责人复核。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.439617,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 5,
+              "chunk_id": "cf27043c-cd87-4808-a0a7-61881211c226",
+              "document_id": "7c5a9398-d065-4615-9b0a-3ecf37361e57",
+              "title": "新员工入职指引（benchmark）",
+              "version_no": 1,
+              "content": "新员工入职需提交身份证、学历证明与离职证明；入职当月即缴纳社保与公积金。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.344296,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            }
+          ]
+        },
+        "totals": {
+          "llm_calls": 1,
+          "embed_calls": 2,
+          "retrieval_calls": 2,
+          "elapsed_ms": 4916
+        },
+        "degraded": false,
+        "warnings": [
+          "补充检索后仍不足：达到阈值的片段只有 1 条（要求 2 条）"
+        ]
+      }
+    },
+    {
+      "config": "full",
+      "question": "q1",
+      "trace": {
+        "request": {
+          "query": "它怎么算？",
+          "mode": "auto",
+          "allowlist": [
+            "context",
+            "entity",
+            "semantic",
+            "decompose",
+            "multi"
+          ],
+          "budget": 5,
+          "quality_threshold": 0.6,
+          "top_k": 5,
+          "doc_type": null,
+          "history_turns": 1
+        },
+        "understanding": {
+          "intent": "查询年假的计算方式",
+          "complexity": "low",
+          "entities": [
+            "年假"
+          ],
+          "references": [
+            {
+              "cue": "它",
+              "resolved": true,
+              "reason": "已按对话历史消解"
+            }
+          ],
+          "constraints": [],
+          "candidate_strategies": [
+            "context",
+            "entity",
+            "semantic"
+          ],
+          "source": "llm",
+          "degraded": false
+        },
+        "routing": [
+          {
+            "strategy": "context",
+            "label": "上下文改写",
+            "kind": "text",
+            "decision": "execute",
+            "evidence": [
+              "指代线索：它"
+            ],
+            "reason": "存在指代线索且提供了对话历史"
+          },
+          {
+            "strategy": "entity",
+            "label": "实体标准化",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现需要标准化的别名"
+          },
+          {
+            "strategy": "semantic",
+            "label": "语义改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "表达已足够检索友好"
+          },
+          {
+            "strategy": "decompose",
+            "label": "问题拆解",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "查询不是复合问题"
+          },
+          {
+            "strategy": "multi",
+            "label": "Multi-Query",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "单一查询已能覆盖需求"
+          },
+          {
+            "strategy": "stepback",
+            "label": "Step-back",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          },
+          {
+            "strategy": "hyde",
+            "label": "HyDE",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          }
+        ],
+        "workflow": [
+          {
+            "id": "understand",
+            "label": "查询理解",
+            "kind": "understand",
+            "depends_on": [],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "baseline",
+            "label": "对照组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "understand"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "context",
+            "label": "上下文改写",
+            "kind": "text",
+            "depends_on": [
+              "baseline"
+            ],
+            "status": "ok",
+            "elapsed_ms": 2431
+          },
+          {
+            "id": "rewritten",
+            "label": "改写组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "context"
+            ],
+            "status": "ok",
+            "elapsed_ms": 270
+          },
+          {
+            "id": "evaluate",
+            "label": "质量评估",
+            "kind": "evaluate",
+            "depends_on": [
+              "baseline",
+              "rewritten"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "second_stage",
+            "label": "二阶段补充",
+            "kind": "second_stage",
+            "depends_on": [
+              "evaluate"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "fuse",
+            "label": "融合去重",
+            "kind": "fuse",
+            "depends_on": [
+              "evaluate",
+              "second_stage"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          }
+        ],
+        "rewrites": [
+          {
+            "strategy": "context",
+            "label": "上下文改写",
+            "status": "ok",
+            "text_in": "它怎么算？",
+            "text_out": "年假怎么算？",
+            "reason": "将“它”补全为历史中提到的“年假”。"
+          }
+        ],
+        "arms": [
+          {
+            "arm": "baseline",
+            "queries": [
+              "它怎么算？"
+            ],
+            "metrics": {
+              "top1": 0.310639,
+              "above_tau": 0,
+              "docs": 5
+            },
+            "hit_count": 5
+          },
+          {
+            "arm": "rewritten",
+            "queries": [
+              "年假怎么算？",
+              "带薪年休假天数如何计算",
+              "年休假折算标准是什么",
+              "年假计算规则有哪些"
+            ],
+            "metrics": {
+              "top1": 0.713664,
+              "above_tau": 1,
+              "docs": 6
+            },
+            "hit_count": 6
+          }
+        ],
+        "evaluation": {
+          "verdict": "insufficient",
+          "lift": 0.403025,
+          "reason": "达到阈值的片段只有 1 条（要求 2 条）"
+        },
+        "second_stage": {
+          "triggered": true,
+          "actions": [
+            "multi"
+          ],
+          "new_chunks": 1,
+          "reason": "从法律法规用语、具体指标名和上位概念三个角度重写检索查询"
+        },
+        "fusion": {
+          "method": "rrf",
+          "k": 60,
+          "before": 6,
+          "after": 5,
+          "items": [
+            {
+              "index": 1,
+              "chunk_id": "4d579ef4-7382-4c49-a105-92afc64df28e",
+              "document_id": "9270d8bf-b802-445c-8631-28d31f50b5f2",
+              "title": "调休与加班规定（benchmark）",
+              "version_no": 1,
+              "content": "工作日加班可按 1:1 申请调休；调休需在加班后三个月内使用，逾期作废，不可折算现金。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.555818,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 2,
+              "chunk_id": "27479bf9-6a12-4caf-b818-c09701b905f3",
+              "document_id": "98ba1494-cd3f-4465-9ebf-bf8a522949d2",
+              "title": "病假与事假规定（benchmark）",
+              "version_no": 1,
+              "content": "病假需提供二级以上医院证明；事假按天扣发当日工资，全年事假累计不超过 15 天。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.584924,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 3,
+              "chunk_id": "26056405-fff0-4dd1-ade0-0927d5255cf5",
+              "document_id": "69b87685-d56b-47ae-b7d7-93c0980d4b72",
+              "title": "年假管理制度（benchmark）",
+              "version_no": 1,
+              "content": "员工入职满一年享有 5 天年假；累计工龄满十年享有 10 天年假；年假需提前三个工作日申请。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.713664,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 4,
+              "chunk_id": "5cade0e1-e2c3-46cb-9321-d43133901d65",
+              "document_id": "172410ed-7df0-4674-a22e-02ed559164b3",
+              "title": "差旅报销标准（benchmark）",
+              "version_no": 1,
+              "content": "出差住宿一线城市每晚不超过 600 元；差旅报销需在行程结束后 30 天内提交发票。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.394985,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 5,
+              "chunk_id": "444e4d1d-d8dc-44da-a6ce-b9828944f41c",
+              "document_id": "76c7eb20-d952-49a2-9bdc-306605f381d5",
+              "title": "考勤与请假流程（benchmark）",
+              "version_no": 1,
+              "content": "请假需在考勤系统提交申请，由直属主管审批；连续请假超过三天需部门负责人复核。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.478503,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            }
+          ]
+        },
+        "totals": {
+          "llm_calls": 3,
+          "embed_calls": 3,
+          "retrieval_calls": 5,
+          "elapsed_ms": 14385
+        },
+        "degraded": false,
+        "warnings": [
+          "补充检索后仍不足：达到阈值的片段只有 1 条（要求 2 条）"
+        ]
+      }
+    },
+    {
+      "config": "full",
+      "question": "q2",
+      "trace": {
+        "request": {
+          "query": "年假和调休有啥不一样？",
+          "mode": "auto",
+          "allowlist": [
+            "context",
+            "entity",
+            "semantic",
+            "decompose",
+            "multi"
+          ],
+          "budget": 5,
+          "quality_threshold": 0.6,
+          "top_k": 5,
+          "doc_type": null,
+          "history_turns": 0
+        },
+        "understanding": {
+          "intent": "比较年假和调休的区别",
+          "complexity": "low",
+          "entities": [
+            "年假",
+            "调休"
+          ],
+          "references": [],
+          "constraints": [],
+          "candidate_strategies": [
+            "semantic",
+            "entity"
+          ],
+          "source": "llm",
+          "degraded": false
+        },
+        "routing": [
+          {
+            "strategy": "context",
+            "label": "上下文改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现指代线索"
+          },
+          {
+            "strategy": "entity",
+            "label": "实体标准化",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现需要标准化的别名"
+          },
+          {
+            "strategy": "semantic",
+            "label": "语义改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "表达已足够检索友好"
+          },
+          {
+            "strategy": "decompose",
+            "label": "问题拆解",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "查询不是复合问题"
+          },
+          {
+            "strategy": "multi",
+            "label": "Multi-Query",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "单一查询已能覆盖需求"
+          },
+          {
+            "strategy": "stepback",
+            "label": "Step-back",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          },
+          {
+            "strategy": "hyde",
+            "label": "HyDE",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          }
+        ],
+        "workflow": [
+          {
+            "id": "understand",
+            "label": "查询理解",
+            "kind": "understand",
+            "depends_on": [],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "baseline",
+            "label": "对照组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "understand"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "rewritten",
+            "label": "改写组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "baseline"
+            ],
+            "status": "ok",
+            "elapsed_ms": 255
+          },
+          {
+            "id": "evaluate",
+            "label": "质量评估",
+            "kind": "evaluate",
+            "depends_on": [
+              "baseline",
+              "rewritten"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "second_stage",
+            "label": "二阶段补充",
+            "kind": "second_stage",
+            "depends_on": [
+              "evaluate"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "fuse",
+            "label": "融合去重",
+            "kind": "fuse",
+            "depends_on": [
+              "evaluate",
+              "second_stage"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          }
+        ],
+        "rewrites": [],
+        "arms": [
+          {
+            "arm": "baseline",
+            "queries": [
+              "年假和调休有啥不一样？"
+            ],
+            "metrics": {
+              "top1": 0.593068,
+              "above_tau": 0,
+              "docs": 5
+            },
+            "hit_count": 5
+          },
+          {
+            "arm": "rewritten",
+            "queries": [
+              "年假和调休有啥不一样？",
+              "年假与调休的区别",
+              "年假和调休有什么不同",
+              "年假和调休差异对比"
+            ],
+            "metrics": {
+              "top1": 0.600867,
+              "above_tau": 1,
+              "docs": 5
+            },
+            "hit_count": 5
+          }
+        ],
+        "evaluation": {
+          "verdict": "insufficient",
+          "lift": 0.007799,
+          "reason": "达到阈值的片段只有 1 条（要求 2 条）"
+        },
+        "second_stage": {
+          "triggered": true,
+          "actions": [
+            "multi"
+          ],
+          "new_chunks": 0,
+          "reason": "通过同义替换和对比表达扩展检索词。"
+        },
+        "fusion": {
+          "method": "rrf",
+          "k": 60,
+          "before": 5,
+          "after": 5,
+          "items": [
+            {
+              "index": 1,
+              "chunk_id": "4d579ef4-7382-4c49-a105-92afc64df28e",
+              "document_id": "9270d8bf-b802-445c-8631-28d31f50b5f2",
+              "title": "调休与加班规定（benchmark）",
+              "version_no": 1,
+              "content": "工作日加班可按 1:1 申请调休；调休需在加班后三个月内使用，逾期作废，不可折算现金。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.600867,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 2,
+              "chunk_id": "26056405-fff0-4dd1-ade0-0927d5255cf5",
+              "document_id": "69b87685-d56b-47ae-b7d7-93c0980d4b72",
+              "title": "年假管理制度（benchmark）",
+              "version_no": 1,
+              "content": "员工入职满一年享有 5 天年假；累计工龄满十年享有 10 天年假；年假需提前三个工作日申请。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.586614,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 3,
+              "chunk_id": "27479bf9-6a12-4caf-b818-c09701b905f3",
+              "document_id": "98ba1494-cd3f-4465-9ebf-bf8a522949d2",
+              "title": "病假与事假规定（benchmark）",
+              "version_no": 1,
+              "content": "病假需提供二级以上医院证明；事假按天扣发当日工资，全年事假累计不超过 15 天。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.523006,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 4,
+              "chunk_id": "444e4d1d-d8dc-44da-a6ce-b9828944f41c",
+              "document_id": "76c7eb20-d952-49a2-9bdc-306605f381d5",
+              "title": "考勤与请假流程（benchmark）",
+              "version_no": 1,
+              "content": "请假需在考勤系统提交申请，由直属主管审批；连续请假超过三天需部门负责人复核。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.412793,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 5,
+              "chunk_id": "5cade0e1-e2c3-46cb-9321-d43133901d65",
+              "document_id": "172410ed-7df0-4674-a22e-02ed559164b3",
+              "title": "差旅报销标准（benchmark）",
+              "version_no": 1,
+              "content": "出差住宿一线城市每晚不超过 600 元；差旅报销需在行程结束后 30 天内提交发票。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.290254,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            }
+          ]
+        },
+        "totals": {
+          "llm_calls": 2,
+          "embed_calls": 3,
+          "retrieval_calls": 5,
+          "elapsed_ms": 9155
+        },
+        "degraded": false,
+        "warnings": [
+          "补充检索后仍不足：达到阈值的片段只有 1 条（要求 2 条）"
+        ]
+      }
+    },
+    {
+      "config": "full",
+      "question": "q3",
+      "trace": {
+        "request": {
+          "query": "出差回来报销和年假没休完折算这两件事分别怎么弄？",
+          "mode": "auto",
+          "allowlist": [
+            "context",
+            "entity",
+            "semantic",
+            "decompose",
+            "multi"
+          ],
+          "budget": 5,
+          "quality_threshold": 0.6,
+          "top_k": 5,
+          "doc_type": null,
+          "history_turns": 0
+        },
+        "understanding": {
+          "intent": "用户想知道出差回来报销和年假没休完折算分别如何办理",
+          "complexity": "medium",
+          "entities": [
+            "出差回来报销",
+            "年假没休完折算"
+          ],
+          "references": [],
+          "constraints": [
+            "分别"
+          ],
+          "candidate_strategies": [
+            "semantic",
+            "entity",
+            "decompose",
+            "multi"
+          ],
+          "source": "llm",
+          "degraded": false
+        },
+        "routing": [
+          {
+            "strategy": "context",
+            "label": "上下文改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现指代线索"
+          },
+          {
+            "strategy": "entity",
+            "label": "实体标准化",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现需要标准化的别名"
+          },
+          {
+            "strategy": "semantic",
+            "label": "语义改写",
+            "kind": "text",
+            "decision": "execute",
+            "evidence": [
+              "表达线索：怎么弄"
+            ],
+            "reason": "查询偏口语或概念型表达"
+          },
+          {
+            "strategy": "decompose",
+            "label": "问题拆解",
+            "kind": "expand",
+            "decision": "execute",
+            "evidence": [
+              "复合线索：分别"
+            ],
+            "reason": "查询包含多个可独立检索的问题"
+          },
+          {
+            "strategy": "multi",
+            "label": "Multi-Query",
+            "kind": "expand",
+            "decision": "execute",
+            "evidence": [
+              "覆盖线索：分别"
+            ],
+            "reason": "单一表述难以覆盖信息需求"
+          },
+          {
+            "strategy": "stepback",
+            "label": "Step-back",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          },
+          {
+            "strategy": "hyde",
+            "label": "HyDE",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          }
+        ],
+        "workflow": [
+          {
+            "id": "understand",
+            "label": "查询理解",
+            "kind": "understand",
+            "depends_on": [],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "baseline",
+            "label": "对照组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "understand"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "semantic",
+            "label": "语义改写",
+            "kind": "text",
+            "depends_on": [
+              "baseline"
+            ],
+            "status": "ok",
+            "elapsed_ms": 5568
+          },
+          {
+            "id": "decompose",
+            "label": "问题拆解",
+            "kind": "expand",
+            "depends_on": [
+              "semantic"
+            ],
+            "status": "ok",
+            "elapsed_ms": 3679
+          },
+          {
+            "id": "multi",
+            "label": "Multi-Query",
+            "kind": "expand",
+            "depends_on": [
+              "decompose"
+            ],
+            "status": "degraded",
+            "elapsed_ms": 7572
+          },
+          {
+            "id": "rewritten",
+            "label": "改写组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "multi"
+            ],
+            "status": "skipped",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "evaluate",
+            "label": "质量评估",
+            "kind": "evaluate",
+            "depends_on": [
+              "baseline",
+              "rewritten"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "fuse",
+            "label": "融合去重",
+            "kind": "fuse",
+            "depends_on": [
+              "evaluate"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          }
+        ],
+        "rewrites": [
+          {
+            "strategy": "semantic",
+            "label": "语义改写",
+            "status": "ok",
+            "text_in": "出差回来报销和年假没休完折算这两件事分别怎么弄？",
+            "text_out": "出差返回后的报销流程与未休年假折算流程办理方式",
+            "reason": "将口语化提问改为并列检索短语，明确两项事项及办理方式。"
+          },
+          {
+            "strategy": "decompose",
+            "label": "问题拆解",
+            "status": "ok",
+            "text_in": "出差返回后的报销流程与未休年假折算流程办理方式",
+            "text_out": "出差返回后的报销流程与未休年假折算流程办理方式",
+            "reason": "原问题包含出差报销和未休年假折算两类流程，分别拆分为独立子问题以便检索。"
+          },
+          {
+            "strategy": "multi",
+            "label": "Multi-Query",
+            "status": "degraded",
+            "text_in": "出差返回后的报销流程与未休年假折算流程办理方式",
+            "text_out": "出差返回后的报销流程与未休年假折算流程办理方式",
+            "reason": "运行已超时"
+          }
+        ],
+        "arms": [
+          {
+            "arm": "baseline",
+            "queries": [
+              "出差回来报销和年假没休完折算这两件事分别怎么弄？"
+            ],
+            "metrics": {
+              "top1": 0.563355,
+              "above_tau": 0,
+              "docs": 5
+            },
+            "hit_count": 5
+          },
+          {
+            "arm": "rewritten",
+            "queries": [],
+            "metrics": {
+              "top1": 0.0,
+              "above_tau": 0,
+              "docs": 0
+            },
+            "hit_count": 0
+          }
+        ],
+        "evaluation": {
+          "verdict": "insufficient",
+          "lift": 0.0,
+          "reason": "改写阶段未完成，只有对照组结果"
+        },
+        "second_stage": {
+          "triggered": false,
+          "actions": [],
+          "new_chunks": 0,
+          "reason": "改写阶段未完成，未做补充检索"
+        },
+        "fusion": {
+          "method": "rrf",
+          "k": 60,
+          "before": 5,
+          "after": 5,
+          "items": [
+            {
+              "index": 1,
+              "chunk_id": "5cade0e1-e2c3-46cb-9321-d43133901d65",
+              "document_id": "172410ed-7df0-4674-a22e-02ed559164b3",
+              "title": "差旅报销标准（benchmark）",
+              "version_no": 1,
+              "content": "出差住宿一线城市每晚不超过 600 元；差旅报销需在行程结束后 30 天内提交发票。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.563355,
+              "sources": [
+                "baseline"
+              ]
+            },
+            {
+              "index": 2,
+              "chunk_id": "4d579ef4-7382-4c49-a105-92afc64df28e",
+              "document_id": "9270d8bf-b802-445c-8631-28d31f50b5f2",
+              "title": "调休与加班规定（benchmark）",
+              "version_no": 1,
+              "content": "工作日加班可按 1:1 申请调休；调休需在加班后三个月内使用，逾期作废，不可折算现金。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.51616,
+              "sources": [
+                "baseline"
+              ]
+            },
+            {
+              "index": 3,
+              "chunk_id": "26056405-fff0-4dd1-ade0-0927d5255cf5",
+              "document_id": "69b87685-d56b-47ae-b7d7-93c0980d4b72",
+              "title": "年假管理制度（benchmark）",
+              "version_no": 1,
+              "content": "员工入职满一年享有 5 天年假；累计工龄满十年享有 10 天年假；年假需提前三个工作日申请。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.491234,
+              "sources": [
+                "baseline"
+              ]
+            },
+            {
+              "index": 4,
+              "chunk_id": "27479bf9-6a12-4caf-b818-c09701b905f3",
+              "document_id": "98ba1494-cd3f-4465-9ebf-bf8a522949d2",
+              "title": "病假与事假规定（benchmark）",
+              "version_no": 1,
+              "content": "病假需提供二级以上医院证明；事假按天扣发当日工资，全年事假累计不超过 15 天。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.48347,
+              "sources": [
+                "baseline"
+              ]
+            },
+            {
+              "index": 5,
+              "chunk_id": "444e4d1d-d8dc-44da-a6ce-b9828944f41c",
+              "document_id": "76c7eb20-d952-49a2-9bdc-306605f381d5",
+              "title": "考勤与请假流程（benchmark）",
+              "version_no": 1,
+              "content": "请假需在考勤系统提交申请，由直属主管审批；连续请假超过三天需部门负责人复核。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.434976,
+              "sources": [
+                "baseline"
+              ]
+            }
+          ]
+        },
+        "totals": {
+          "llm_calls": 4,
+          "embed_calls": 1,
+          "retrieval_calls": 1,
+          "elapsed_ms": 25410
+        },
+        "degraded": true,
+        "warnings": [
+          "Multi-Query 降级：运行已超时",
+          "运行超时，改写组检索已取消，返回对照组结果",
+          "改写组没有可用的检索查询，已回退到对照组结果"
+        ]
+      }
+    },
+    {
+      "config": "full",
+      "question": "q4",
+      "trace": {
+        "request": {
+          "query": "《员工手册》里请假的规定？",
+          "mode": "auto",
+          "allowlist": [
+            "context",
+            "entity",
+            "semantic",
+            "decompose",
+            "multi"
+          ],
+          "budget": 5,
+          "quality_threshold": 0.6,
+          "top_k": 5,
+          "doc_type": null,
+          "history_turns": 0
+        },
+        "understanding": {
+          "intent": "查询《员工手册》中关于请假的规定",
+          "complexity": "low",
+          "entities": [
+            "员工手册",
+            "请假"
+          ],
+          "references": [],
+          "constraints": [
+            "《员工手册》",
+            "请假的规定"
+          ],
+          "candidate_strategies": [
+            "semantic",
+            "entity"
+          ],
+          "source": "llm",
+          "degraded": false
+        },
+        "routing": [
+          {
+            "strategy": "context",
+            "label": "上下文改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现指代线索"
+          },
+          {
+            "strategy": "entity",
+            "label": "实体标准化",
+            "kind": "text",
+            "decision": "execute",
+            "evidence": [
+              "别名候选：员工手册"
+            ],
+            "reason": "查询中出现疑似别名或专名"
+          },
+          {
+            "strategy": "semantic",
+            "label": "语义改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "表达已足够检索友好"
+          },
+          {
+            "strategy": "decompose",
+            "label": "问题拆解",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "查询不是复合问题"
+          },
+          {
+            "strategy": "multi",
+            "label": "Multi-Query",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "单一查询已能覆盖需求"
+          },
+          {
+            "strategy": "stepback",
+            "label": "Step-back",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          },
+          {
+            "strategy": "hyde",
+            "label": "HyDE",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          }
+        ],
+        "workflow": [
+          {
+            "id": "understand",
+            "label": "查询理解",
+            "kind": "understand",
+            "depends_on": [],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "baseline",
+            "label": "对照组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "understand"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "entity",
+            "label": "实体标准化",
+            "kind": "text",
+            "depends_on": [
+              "baseline"
+            ],
+            "status": "skipped",
+            "elapsed_ms": 419
+          },
+          {
+            "id": "rewritten",
+            "label": "改写组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "entity"
+            ],
+            "status": "ok",
+            "elapsed_ms": 256
+          },
+          {
+            "id": "evaluate",
+            "label": "质量评估",
+            "kind": "evaluate",
+            "depends_on": [
+              "baseline",
+              "rewritten"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "fuse",
+            "label": "融合去重",
+            "kind": "fuse",
+            "depends_on": [
+              "evaluate"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          }
+        ],
+        "rewrites": [
+          {
+            "strategy": "entity",
+            "label": "实体标准化",
+            "status": "skipped",
+            "text_in": "《员工手册》里请假的规定？",
+            "text_out": "《员工手册》里请假的规定？",
+            "reason": "图谱中没有匹配到候选实体"
+          }
+        ],
+        "arms": [
+          {
+            "arm": "baseline",
+            "queries": [
+              "《员工手册》里请假的规定？"
+            ],
+            "metrics": {
+              "top1": 0.711519,
+              "above_tau": 3,
+              "docs": 5
+            },
+            "hit_count": 5
+          },
+          {
+            "arm": "rewritten",
+            "queries": [
+              "《员工手册》里请假的规定？"
+            ],
+            "metrics": {
+              "top1": 0.711246,
+              "above_tau": 3,
+              "docs": 5
+            },
+            "hit_count": 5
+          }
+        ],
+        "evaluation": {
+          "verdict": "sufficient",
+          "lift": -0.000273,
+          "reason": "改写组 3 条片段达到阈值 0.6，最高分 0.711246"
+        },
+        "second_stage": {
+          "triggered": false,
+          "actions": [],
+          "new_chunks": 0,
+          "reason": ""
+        },
+        "fusion": {
+          "method": "rrf",
+          "k": 60,
+          "before": 5,
+          "after": 5,
+          "items": [
+            {
+              "index": 1,
+              "chunk_id": "27479bf9-6a12-4caf-b818-c09701b905f3",
+              "document_id": "98ba1494-cd3f-4465-9ebf-bf8a522949d2",
+              "title": "病假与事假规定（benchmark）",
+              "version_no": 1,
+              "content": "病假需提供二级以上医院证明；事假按天扣发当日工资，全年事假累计不超过 15 天。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.711519,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 2,
+              "chunk_id": "444e4d1d-d8dc-44da-a6ce-b9828944f41c",
+              "document_id": "76c7eb20-d952-49a2-9bdc-306605f381d5",
+              "title": "考勤与请假流程（benchmark）",
+              "version_no": 1,
+              "content": "请假需在考勤系统提交申请，由直属主管审批；连续请假超过三天需部门负责人复核。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.656445,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 3,
+              "chunk_id": "26056405-fff0-4dd1-ade0-0927d5255cf5",
+              "document_id": "69b87685-d56b-47ae-b7d7-93c0980d4b72",
+              "title": "年假管理制度（benchmark）",
+              "version_no": 1,
+              "content": "员工入职满一年享有 5 天年假；累计工龄满十年享有 10 天年假；年假需提前三个工作日申请。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.648865,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 4,
+              "chunk_id": "4d579ef4-7382-4c49-a105-92afc64df28e",
+              "document_id": "9270d8bf-b802-445c-8631-28d31f50b5f2",
+              "title": "调休与加班规定（benchmark）",
+              "version_no": 1,
+              "content": "工作日加班可按 1:1 申请调休；调休需在加班后三个月内使用，逾期作废，不可折算现金。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.547076,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 5,
+              "chunk_id": "cf27043c-cd87-4808-a0a7-61881211c226",
+              "document_id": "7c5a9398-d065-4615-9b0a-3ecf37361e57",
+              "title": "新员工入职指引（benchmark）",
+              "version_no": 1,
+              "content": "新员工入职需提交身份证、学历证明与离职证明；入职当月即缴纳社保与公积金。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.42347,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            }
+          ]
+        },
+        "totals": {
+          "llm_calls": 1,
+          "embed_calls": 2,
+          "retrieval_calls": 2,
+          "elapsed_ms": 5046
+        },
+        "degraded": false,
+        "warnings": []
+      }
+    },
+    {
+      "config": "full",
+      "question": "q5",
+      "trace": {
+        "request": {
+          "query": "满十年工龄年假多少天？",
+          "mode": "auto",
+          "allowlist": [
+            "context",
+            "entity",
+            "semantic",
+            "decompose",
+            "multi"
+          ],
+          "budget": 5,
+          "quality_threshold": 0.6,
+          "top_k": 5,
+          "doc_type": null,
+          "history_turns": 0
+        },
+        "understanding": {
+          "intent": "查询满十年工龄对应的年假天数",
+          "complexity": "low",
+          "entities": [
+            "满十年工龄",
+            "年假"
+          ],
+          "references": [],
+          "constraints": [
+            "满十年工龄"
+          ],
+          "candidate_strategies": [
+            "semantic",
+            "entity"
+          ],
+          "source": "llm",
+          "degraded": false
+        },
+        "routing": [
+          {
+            "strategy": "context",
+            "label": "上下文改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现指代线索"
+          },
+          {
+            "strategy": "entity",
+            "label": "实体标准化",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "未发现需要标准化的别名"
+          },
+          {
+            "strategy": "semantic",
+            "label": "语义改写",
+            "kind": "text",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "表达已足够检索友好"
+          },
+          {
+            "strategy": "decompose",
+            "label": "问题拆解",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "查询不是复合问题"
+          },
+          {
+            "strategy": "multi",
+            "label": "Multi-Query",
+            "kind": "expand",
+            "decision": "not_triggered",
+            "evidence": [],
+            "reason": "单一查询已能覆盖需求"
+          },
+          {
+            "strategy": "stepback",
+            "label": "Step-back",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          },
+          {
+            "strategy": "hyde",
+            "label": "HyDE",
+            "kind": "expand",
+            "decision": "unavailable",
+            "evidence": [],
+            "reason": "当前版本未启用该策略，不产生模型调用与检索"
+          }
+        ],
+        "workflow": [
+          {
+            "id": "understand",
+            "label": "查询理解",
+            "kind": "understand",
+            "depends_on": [],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "baseline",
+            "label": "对照组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "understand"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "rewritten",
+            "label": "改写组检索",
+            "kind": "retrieve",
+            "depends_on": [
+              "baseline"
+            ],
+            "status": "ok",
+            "elapsed_ms": 264
+          },
+          {
+            "id": "evaluate",
+            "label": "质量评估",
+            "kind": "evaluate",
+            "depends_on": [
+              "baseline",
+              "rewritten"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "second_stage",
+            "label": "二阶段补充",
+            "kind": "second_stage",
+            "depends_on": [
+              "evaluate"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          },
+          {
+            "id": "fuse",
+            "label": "融合去重",
+            "kind": "fuse",
+            "depends_on": [
+              "evaluate",
+              "second_stage"
+            ],
+            "status": "ok",
+            "elapsed_ms": 0
+          }
+        ],
+        "rewrites": [],
+        "arms": [
+          {
+            "arm": "baseline",
+            "queries": [
+              "满十年工龄年假多少天？"
+            ],
+            "metrics": {
+              "top1": 0.792588,
+              "above_tau": 1,
+              "docs": 5
+            },
+            "hit_count": 5
+          },
+          {
+            "arm": "rewritten",
+            "queries": [
+              "满十年工龄年假多少天？",
+              "工龄满十年年休假天数",
+              "带薪年休假 累计工作满十年 几天",
+              "工作满十年年假多少天"
+            ],
+            "metrics": {
+              "top1": 0.815325,
+              "above_tau": 1,
+              "docs": 5
+            },
+            "hit_count": 5
+          }
+        ],
+        "evaluation": {
+          "verdict": "insufficient",
+          "lift": 0.022737,
+          "reason": "达到阈值的片段只有 1 条（要求 2 条）"
+        },
+        "second_stage": {
+          "triggered": true,
+          "actions": [
+            "multi"
+          ],
+          "new_chunks": 0,
+          "reason": "从年休假天数、带薪年休假上位概念和累计工作满十年法规表达角度扩展。"
+        },
+        "fusion": {
+          "method": "rrf",
+          "k": 60,
+          "before": 5,
+          "after": 5,
+          "items": [
+            {
+              "index": 1,
+              "chunk_id": "26056405-fff0-4dd1-ade0-0927d5255cf5",
+              "document_id": "69b87685-d56b-47ae-b7d7-93c0980d4b72",
+              "title": "年假管理制度（benchmark）",
+              "version_no": 1,
+              "content": "员工入职满一年享有 5 天年假；累计工龄满十年享有 10 天年假；年假需提前三个工作日申请。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.815325,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 2,
+              "chunk_id": "27479bf9-6a12-4caf-b818-c09701b905f3",
+              "document_id": "98ba1494-cd3f-4465-9ebf-bf8a522949d2",
+              "title": "病假与事假规定（benchmark）",
+              "version_no": 1,
+              "content": "病假需提供二级以上医院证明；事假按天扣发当日工资，全年事假累计不超过 15 天。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.588062,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 3,
+              "chunk_id": "4d579ef4-7382-4c49-a105-92afc64df28e",
+              "document_id": "9270d8bf-b802-445c-8631-28d31f50b5f2",
+              "title": "调休与加班规定（benchmark）",
+              "version_no": 1,
+              "content": "工作日加班可按 1:1 申请调休；调休需在加班后三个月内使用，逾期作废，不可折算现金。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.487711,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 4,
+              "chunk_id": "444e4d1d-d8dc-44da-a6ce-b9828944f41c",
+              "document_id": "76c7eb20-d952-49a2-9bdc-306605f381d5",
+              "title": "考勤与请假流程（benchmark）",
+              "version_no": 1,
+              "content": "请假需在考勤系统提交申请，由直属主管审批；连续请假超过三天需部门负责人复核。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.446902,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            },
+            {
+              "index": 5,
+              "chunk_id": "cf27043c-cd87-4808-a0a7-61881211c226",
+              "document_id": "7c5a9398-d065-4615-9b0a-3ecf37361e57",
+              "title": "新员工入职指引（benchmark）",
+              "version_no": 1,
+              "content": "新员工入职需提交身份证、学历证明与离职证明；入职当月即缴纳社保与公积金。",
+              "truncated": false,
+              "heading_path": null,
+              "score": 0.344347,
+              "sources": [
+                "baseline",
+                "rewritten"
+              ]
+            }
+          ]
+        },
+        "totals": {
+          "llm_calls": 2,
+          "embed_calls": 3,
+          "retrieval_calls": 5,
+          "elapsed_ms": 10954
+        },
+        "degraded": false,
+        "warnings": [
+          "补充检索后仍不足：达到阈值的片段只有 1 条（要求 2 条）"
+        ]
+      }
+    }
+  ]
+}

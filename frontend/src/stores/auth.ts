@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 
 import { authApi } from '@/api/auth'
 import type { LoginResponse, MeResponse } from '@/api/types'
-import { permissionsOf, type Permission } from '@/constants'
+import type { Permission } from '@/constants'
 
 const AUTH_KEY = 'ai-platform-auth'
 const USER_KEY = 'ai-platform-user'
@@ -41,7 +41,11 @@ export const useAuthStore = defineStore('auth', () => {
 
   const roles = computed(() => user.value?.roles ?? [])
   const isLoggedIn = computed(() => Boolean(accessToken.value))
-  const permissions = computed(() => permissionsOf(roles.value))
+  /** 权限直接取 /auth/me 下发的编码，前端不再按角色推导 */
+  const permissions = computed(
+    () => new Set((user.value?.permissions ?? []) as Permission[]),
+  )
+  const permissionsLoaded = computed(() => Array.isArray(user.value?.permissions))
   const isAdmin = computed(() => roles.value.includes('admin'))
 
   function applyLogin(payload: LoginResponse): void {
@@ -73,6 +77,25 @@ export const useAuthStore = defineStore('auth', () => {
     return me
   }
 
+  /**
+   * 本地缓存可能来自旧版本（登录响应只有 roles），缺 permissions 时补拉一次 /auth/me；
+   * 补拉后仍没有权限就清空登录态，避免出现"能进页面但没有权限"的半登录状态。
+   */
+  async function ensurePermissions(): Promise<boolean> {
+    if (permissionsLoaded.value) return true
+    try {
+      await fetchMe()
+    } catch {
+      clear()
+      return false
+    }
+    if (!permissionsLoaded.value) {
+      clear()
+      return false
+    }
+    return true
+  }
+
   async function logout(): Promise<void> {
     try {
       await authApi.logout(refreshToken.value || undefined)
@@ -97,10 +120,12 @@ export const useAuthStore = defineStore('auth', () => {
     roles,
     isLoggedIn,
     permissions,
+    permissionsLoaded,
     isAdmin,
     has,
     login,
     fetchMe,
+    ensurePermissions,
     logout,
     clear,
   }

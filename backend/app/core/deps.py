@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import ForbiddenError, UnauthorizedError
 from app.core.security import decode_access_token
 from app.domain.enums import UserStatus
-from app.domain.policies import Permission, has_permission
+from app.domain.policies import Permission
 from app.infra.db.models import AppUser
 from app.infra.db.repositories import UserRepository
 from app.infra.db.session import get_db
@@ -31,10 +31,11 @@ def client_ip(request: Request) -> str | None:
 
 @dataclass(frozen=True)
 class Principal:
-    """已认证主体：用户实体 + 实时角色（不信任令牌内的角色快照）。"""
+    """已认证主体：用户实体 + 实时角色与权限（不信任令牌内的快照）。"""
 
     user: AppUser
     roles: list[str]
+    permissions: frozenset[str]
 
     @property
     def user_id(self) -> uuid.UUID:
@@ -42,6 +43,9 @@ class Principal:
 
     def has_role(self, *codes: str) -> bool:
         return any(code in self.roles for code in codes)
+
+    def has_permission(self, permission: Permission) -> bool:
+        return permission.value in self.permissions
 
 
 def get_principal(
@@ -63,8 +67,8 @@ def get_principal(
     if user.status != UserStatus.ACTIVE.value:
         raise ForbiddenError("账号已被禁用")
 
-    roles = UserRepository(db).list_roles(user.id)
-    return Principal(user=user, roles=roles)
+    roles, permissions = UserRepository(db).list_roles_and_permissions(user.id)
+    return Principal(user=user, roles=roles, permissions=frozenset(permissions))
 
 
 CurrentPrincipal = Annotated[Principal, Depends(get_principal)]
@@ -92,7 +96,7 @@ def require_permission(*permissions: Permission) -> Callable[[Principal], Princi
     """按能力放行，多角色可共享同一能力；满足任意一个即通过。"""
 
     def _checker(principal: CurrentPrincipal) -> Principal:
-        if not any(has_permission(principal.roles, permission) for permission in permissions):
+        if not any(principal.has_permission(permission) for permission in permissions):
             raise ForbiddenError()
         return principal
 

@@ -29,7 +29,7 @@ from app.domain.files import (
     profile_of,
 )
 from app.infra.db.models import AppUser, Document, DocumentVersion
-from app.infra.db.repositories import DocumentRepository
+from app.infra.db.repositories import DepartmentRepository, DocumentRepository
 from app.infra.storage import get_storage, stream_checksum
 from app.schemas.document import (
     DocumentItem,
@@ -56,7 +56,9 @@ class DocumentMeta:
     extra_metadata: dict[str, Any] = field(default_factory=dict)
 
 
-def version_item(version: DocumentVersion) -> DocumentVersionItem:
+def version_item(
+    version: DocumentVersion, *, created_by_name: str | None = None
+) -> DocumentVersionItem:
     return DocumentVersionItem(
         id=str(version.id),
         document_id=str(version.document_id),
@@ -73,12 +75,19 @@ def version_item(version: DocumentVersion) -> DocumentVersionItem:
         chunk_count=version.chunk_count,
         indexed_at=version.indexed_at,
         created_by=str(version.created_by) if version.created_by else None,
+        created_by_name=created_by_name,
         created_at=version.created_at,
     )
 
 
 def document_item(
-    document: Document, current_version: DocumentVersion | None = None
+    document: Document,
+    current_version: DocumentVersion | None = None,
+    *,
+    created_by_name: str | None = None,
+    created_by_department_id: uuid.UUID | None = None,
+    created_by_department_name: str | None = None,
+    current_version_uploader_name: str | None = None,
 ) -> DocumentItem:
     return DocumentItem(
         id=str(document.id),
@@ -96,9 +105,18 @@ def document_item(
         extra_metadata=dict(document.extra_metadata or {}),
         deleted_at=document.deleted_at,
         created_by=str(document.created_by) if document.created_by else None,
+        created_by_name=created_by_name,
+        created_by_department_id=(
+            str(created_by_department_id) if created_by_department_id else None
+        ),
+        created_by_department_name=created_by_department_name,
         created_at=document.created_at,
         updated_at=document.updated_at,
-        current_version=version_item(current_version) if current_version else None,
+        current_version=(
+            version_item(current_version, created_by_name=current_version_uploader_name)
+            if current_version
+            else None
+        ),
     )
 
 
@@ -118,6 +136,7 @@ class DocumentService:
     def __init__(self, db: Session, storage: Any | None = None) -> None:
         self.db = db
         self.documents = DocumentRepository(db)
+        self.departments = DepartmentRepository(db)
         self.storage = storage or get_storage()
         self.audit = AuditService(db)
 
@@ -265,6 +284,9 @@ class DocumentService:
         self, principal: Principal, query: DocumentQuery
     ) -> DocumentListResponse:
         owner_id = self._parse_uuid(query.owner_id, "owner_id")
+        department_ids = self._resolve_department_ids(
+            principal.user.workspace_id, query.department_id
+        )
         rows, total = self.documents.list_paginated(
             workspace_id=principal.user.workspace_id,
             keyword=query.keyword,
@@ -272,6 +294,7 @@ class DocumentService:
             tag=query.tag,
             sensitivity=query.sensitivity.value if query.sensitivity else None,
             owner_id=owner_id,
+            department_ids=department_ids,
             created_from=query.created_from,
             created_to=query.created_to,
             include_deleted=query.include_deleted,
@@ -282,11 +305,36 @@ class DocumentService:
         )
         current_ids = [row.current_version_id for row in rows if row.current_version_id]
         versions = self.documents.get_versions(current_ids)
+
+        uploader_ids = [row.created_by for row in rows if row.created_by]
+        uploader_ids.extend(
+            version.created_by for version in versions.values() if version.created_by
+        )
+        attribution = self.documents.attribution_map(uploader_ids)
+
+        items: list[DocumentItem] = []
+        for row in rows:
+            current = versions.get(row.current_version_id)
+            name, department_id, department_name = attribution.get(
+                row.created_by, (None, None, None)
+            )
+            version_name = (
+                attribution.get(current.created_by, (None, None, None))[0]
+                if current is not None
+                else None
+            )
+            items.append(
+                document_item(
+                    row,
+                    current,
+                    created_by_name=name,
+                    created_by_department_id=department_id,
+                    created_by_department_name=department_name,
+                    current_version_uploader_name=version_name,
+                )
+            )
         return DocumentListResponse(
-            items=[
-                document_item(row, versions.get(row.current_version_id))
-                for row in rows
-            ],
+            items=items,
             total=total,
             page=query.page,
             page_size=query.page_size,
@@ -299,13 +347,60 @@ class DocumentService:
             if document.current_version_id
             else None
         )
-        return document_item(document, current)
+        return self.attributed_item(document, current)
+
+    def attributed_item(
+        self,
+        document: Document,
+        current_version: DocumentVersion | None = None,
+    ) -> DocumentItem:
+        """补上传人姓名与部门后返回，供上传/更新等单条返回场景复用。"""
+
+        user_ids = [document.created_by] if document.created_by else []
+        if current_version is not None and current_version.created_by:
+            user_ids.append(current_version.created_by)
+        attribution = self.documents.attribution_map(user_ids)
+        name, department_id, department_name = attribution.get(
+            document.created_by, (None, None, None)
+        )
+        version_name = (
+            attribution.get(current_version.created_by, (None, None, None))[0]
+            if current_version is not None
+            else None
+        )
+        return document_item(
+            document,
+            current_version,
+            created_by_name=name,
+            created_by_department_id=department_id,
+            created_by_department_name=department_name,
+            current_version_uploader_name=version_name,
+        )
+
+    def version_item_with_uploader(self, version: DocumentVersion) -> DocumentVersionItem:
+        attribution = self.documents.attribution_map(
+            [version.created_by] if version.created_by else []
+        )
+        name = attribution.get(version.created_by, (None, None, None))[0]
+        return version_item(version, created_by_name=name)
 
     def list_versions(
         self, principal: Principal, document_id: uuid.UUID
     ) -> list[DocumentVersionItem]:
         document = self._get_or_404(document_id, principal.user.workspace_id)
-        return [version_item(version) for version in self.documents.list_versions(document.id)]
+        versions = self.documents.list_versions(document.id)
+        attribution = self.documents.attribution_map(
+            [version.created_by for version in versions if version.created_by]
+        )
+        return [
+            version_item(
+                version,
+                created_by_name=attribution.get(
+                    version.created_by, (None, None, None)
+                )[0],
+            )
+            for version in versions
+        ]
 
     def build_download(
         self,
@@ -405,7 +500,7 @@ class DocumentService:
             if document.current_version_id
             else None
         )
-        return document_item(document, current)
+        return self.attributed_item(document, current)
 
     def soft_delete(
         self, principal: Principal, document_id: uuid.UUID, *, ip: str | None = None
@@ -460,7 +555,7 @@ class DocumentService:
         ):
             # 恢复后重新进入检索范围
             enqueue_version_index(current.id)
-        return document_item(document, current)
+        return self.attributed_item(document, current)
 
     def _reset_current_index(self, document: Document) -> None:
         """当前版本离开可检索状态时清空片段并复位索引状态。"""
@@ -513,6 +608,18 @@ class DocumentService:
         name = file_name.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
         stem = name.rsplit(".", 1)[0].strip()
         return stem or "未命名文档"
+
+    def _resolve_department_ids(
+        self, workspace_id: uuid.UUID, raw: str | None
+    ) -> list[uuid.UUID] | None:
+        """None 表示不筛选；部门不存在与人员列表保持一致的 400。"""
+
+        department_id = self._parse_uuid(raw, "department_id")
+        if department_id is None:
+            return None
+        if self.departments.get_in_workspace(department_id, workspace_id) is None:
+            raise BadRequestError("部门不存在")
+        return self.departments.list_descendant_ids(workspace_id, department_id)
 
     @staticmethod
     def _parse_uuid(value: str | None, field_name: str) -> uuid.UUID | None:

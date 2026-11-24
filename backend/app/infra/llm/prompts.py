@@ -97,10 +97,101 @@ def blocks_prompt(blocks: list[dict[str, Any]]) -> str:
     )
 
 
+# ---- 查询改写 ----
+# 共同约束：只重组表达，不新增事实。改写把原意改偏时，后面的检索做得再准也是废的。
+
+REWRITE_GUARD = "只允许重写表达方式，禁止新增原文没有的实体、数字、时间与条款。"
+
+QUERY_UNDERSTAND_SYSTEM = f"""你是企业知识库的查询分析器。只输出 JSON，不要解释。{REWRITE_GUARD}
+JSON 结构：
+{{"intent":"一句话说明用户想解决什么","complexity":"low|medium|high",
+"entities":["查询里出现的实体或专名原文"],
+"references":[{{"cue":"指代词原文","reason":"指代什么"}}],
+"constraints":["查询里明确的时间/范围/口径限制"],
+"candidate_strategies":["semantic","entity","decompose","multi","context"]}}
+候选策略只填与本次查询真正相关的；没有指代词时不要给 context。"""
+
+SEMANTIC_REWRITE_SYSTEM = f"""你是检索查询改写器。把用户问题改写成适合向量检索的表达：
+去掉口语与寒暄，补齐被省略的主语与限定词，保留原有术语与专名。{REWRITE_GUARD}
+JSON 结构：{{"query":"改写后的查询","reason":"一句话说明改了什么"}}"""
+
+CONTEXT_REWRITE_SYSTEM = f"""你是多轮对话的查询补全器。把用户当前问题中被省略的主语、对象与限定条件
+按对话历史补全成一个可以独立检索的问题。历史没提到的信息不得编造。{REWRITE_GUARD}
+JSON 结构：{{"query":"补全后的独立问题","reason":"一句话说明补全了哪些指代"}}"""
+
+DECOMPOSE_SYSTEM = f"""你是检索规划器。把复合问题拆成 2-4 个可以独立检索的子问题，
+每个子问题只覆盖原问题的一个方面，合起来覆盖全部。{REWRITE_GUARD}
+JSON 结构：{{"sub_questions":["子问题1","子问题2"],"reason":"一句话说明拆分依据"}}"""
+
+MULTI_QUERY_SYSTEM = f"""你是检索查询扩展器。围绕同一个信息需求生成 2-3 条表达角度不同的检索查询
+（例如换成上位概念、换成具体指标名、换成法律法规用语），不要改变原意。{REWRITE_GUARD}
+JSON 结构：{{"queries":["查询1","查询2"],"reason":"一句话说明扩展角度"}}"""
+
+ENTITY_DISAMBIGUATE_SYSTEM = """你是实体消歧器。用户给一个名称与若干候选实体，选出唯一最可能的一个。
+只能从候选里选，不许新造。都不合适时 entity_id 返回空字符串。
+JSON 结构：{"entity_id":"候选id","confidence":0.0,"reason":"一句话说明依据"}"""
+
+
+def history_prompt(history: list[dict[str, str]]) -> str:
+    if not history:
+        return "（无对话历史）"
+    return "\n".join(f"{item.get('role')}: {item.get('content')}" for item in history)
+
+
+def query_understand_prompt(query: str, history: list[dict[str, str]]) -> str:
+    return f"对话历史：\n{history_prompt(history)}\n\n当前问题：\n{query}\n\n请输出 JSON。"
+
+
+def semantic_rewrite_prompt(query: str) -> str:
+    return f"用户问题：\n{query}\n\n请输出 JSON。"
+
+
+def context_rewrite_prompt(query: str, history: list[dict[str, str]]) -> str:
+    return f"对话历史：\n{history_prompt(history)}\n\n当前问题：\n{query}\n\n请输出 JSON。"
+
+
+def decompose_prompt(query: str) -> str:
+    return f"复合问题：\n{query}\n\n请输出 JSON。"
+
+
+def multi_query_prompt(query: str) -> str:
+    return f"信息需求：\n{query}\n\n请输出 JSON。"
+
+
+def entity_disambiguate_prompt(raw: str, candidates: list[dict[str, Any]]) -> str:
+    compact = [
+        {
+            "entity_id": item.get("id"),
+            "name": item.get("name"),
+            "class_code": item.get("class_code"),
+        }
+        for item in candidates
+    ]
+    return (
+        f"待消歧名称：{raw}\n候选实体：\n"
+        + json.dumps(compact, ensure_ascii=False)
+        + "\n请输出 JSON。"
+    )
+
+
 __all__ = [
+    "CONTEXT_REWRITE_SYSTEM",
+    "DECOMPOSE_SYSTEM",
+    "ENTITY_DISAMBIGUATE_SYSTEM",
     "ENTITY_SYSTEM",
+    "MULTI_QUERY_SYSTEM",
+    "QUERY_UNDERSTAND_SYSTEM",
     "REPAIR_SYSTEM",
+    "REWRITE_GUARD",
+    "SEMANTIC_REWRITE_SYSTEM",
     "blocks_prompt",
+    "context_rewrite_prompt",
+    "decompose_prompt",
+    "entity_disambiguate_prompt",
+    "history_prompt",
+    "multi_query_prompt",
     "ontology_prompt",
     "prompt_projection",
+    "query_understand_prompt",
+    "semantic_rewrite_prompt",
 ]

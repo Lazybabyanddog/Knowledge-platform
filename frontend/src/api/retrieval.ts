@@ -53,6 +53,7 @@ function dispatch(event: SseEvent, handlers: AskHandlers): void {
       handlers.onDone?.({
         elapsed_ms: Number(payload.elapsed_ms ?? 0),
         sources: Number(payload.sources ?? 0),
+        qa_record_id: String(payload.qa_record_id ?? ''),
       })
       break
     case 'error':

@@ -6,9 +6,10 @@ import { errorMessage } from '@/api/http'
 import { reviewApi } from '@/api/reviews'
 import type { ReviewFlow, ReviewStep, ReviewStepInput, UserItem } from '@/api/types'
 import { userApi } from '@/api/users'
-import { ROLE_LABELS } from '@/constants'
+import { useRolesStore } from '@/stores/roles'
 import { DOC_TYPE, formatTime } from '@/utils/format'
 
+const roles = useRolesStore()
 const flows = ref<ReviewFlow[]>([])
 const loading = ref(false)
 const users = ref<UserItem[]>([])
@@ -53,7 +54,7 @@ async function ensureUsers(): Promise<void> {
 
 function approverLabel(step: ReviewStep | ReviewStepInput): string {
   if (step.approver_type === 'role') {
-    return ROLE_LABELS[step.approver_value] ?? step.approver_value
+    return roles.label(step.approver_value)
   }
   const user = users.value.find((item) => item.id === step.approver_value)
   return user?.display_name ?? `${step.approver_value.slice(0, 8)}…`
@@ -65,7 +66,7 @@ function stepSummary(flow: ReviewFlow): string {
 
 function approverOptions(step: ReviewStepInput): Array<{ value: string; label: string }> {
   if (step.approver_type === 'role') {
-    return Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label }))
+    return roles.options
   }
   return users.value.map((user) => ({ value: user.id, label: user.display_name || user.username }))
 }
@@ -203,7 +204,7 @@ async function remove(flow: ReviewFlow): Promise<void> {
 }
 
 onMounted(async () => {
-  await Promise.all([load(), ensureUsers()])
+  await Promise.all([load(), ensureUsers(), roles.ensureLoaded()])
 })
 </script>
 

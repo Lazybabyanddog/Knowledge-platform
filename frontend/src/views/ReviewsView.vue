@@ -6,11 +6,12 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { errorMessage } from '@/api/http'
 import { reviewApi } from '@/api/reviews'
 import type { ReviewInstance, ReviewInstanceDetail, ReviewStep } from '@/api/types'
-import { ROLE_LABELS } from '@/constants'
 import { useAuthStore } from '@/stores/auth'
+import { useRolesStore } from '@/stores/roles'
 import { DOC_TYPE, REVIEW_ACTION, REVIEW_STATUS, formatTime, statusMeta } from '@/utils/format'
 
 const auth = useAuthStore()
+const roles = useRolesStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -206,13 +207,14 @@ function recordType(action: string): 'success' | 'danger' | 'info' {
 
 function approverLabel(step: ReviewStep): string {
   if (step.approver_type === 'role') {
-    return ROLE_LABELS[step.approver_value] ?? step.approver_value
+    return roles.label(step.approver_value)
   }
   return `${step.approver_value.slice(0, 8)}…`
 }
 
 onMounted(() => {
   void loadReviews()
+  void roles.ensureLoaded()
 })
 </script>
 

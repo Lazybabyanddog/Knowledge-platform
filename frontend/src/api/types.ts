@@ -38,6 +38,8 @@ export interface MeResponse {
   status: string
   workspace_id: string
   roles: string[]
+  /** 权限编码来自数据库，登录后由 /auth/me 下发 */
+  permissions: string[]
   last_login_at: string | null
 }
 
@@ -48,8 +50,52 @@ export interface UserItem {
   email: string | null
   status: string
   roles: string[]
+  department_id: string | null
+  department_name: string | null
   last_login_at: string | null
   created_at: string
+}
+
+/* ------------------------------ 部门 / 角色 ------------------------------ */
+
+export interface DepartmentItem {
+  id: string
+  name: string
+  parent_id: string | null
+  sort_order: number
+  user_count: number
+}
+
+export interface DepartmentListResponse {
+  items: DepartmentItem[]
+}
+
+export interface RoleItem {
+  id: string
+  code: string
+  name: string
+  description: string | null
+  is_system: boolean
+  user_count: number
+  permissions: string[]
+}
+
+export interface RoleListResponse {
+  items: RoleItem[]
+}
+
+export interface PermissionItem {
+  code: string
+  name: string
+}
+
+export interface PermissionGroup {
+  group: string
+  items: PermissionItem[]
+}
+
+export interface PermissionCatalogResponse {
+  groups: PermissionGroup[]
 }
 
 /* --------------------------------- 文档 --------------------------------- */
@@ -69,6 +115,7 @@ export interface DocumentVersion {
   is_current: boolean
   change_note: string | null
   created_by: string | null
+  created_by_name: string | null
   created_at: string
 }
 
@@ -86,6 +133,10 @@ export interface DocumentItem {
   extra_metadata: Record<string, unknown>
   deleted_at: string | null
   created_by: string | null
+  /** 上传人姓名与当前所属部门，取自人员档案 */
+  created_by_name: string | null
+  created_by_department_id: string | null
+  created_by_department_name: string | null
   created_at: string
   updated_at: string
   current_version: DocumentVersion | null
@@ -498,4 +549,239 @@ export interface AskParams {
 export interface AskDone {
   elapsed_ms: number
   sources: number
+  /** 本次问答的留痕标识；用作反馈接口的入参 */
+  qa_record_id: string
+}
+
+/* --------------------------- 问答反馈 / 治理 --------------------------- */
+
+export type QaRating = 'like' | 'dislike'
+export type QaDislikeReason = 'off_topic' | 'fake_citation' | 'outdated' | 'incomplete' | 'other'
+export type QaIssueStatus = 'pending' | 'closed'
+export type QaDisposition = 'false_positive' | 'knowledge_gap' | 'retrieval_failure' | 'answer_error'
+
+export interface QaFeedback {
+  id: string
+  record_id: string
+  rating: QaRating
+  reason: string | null
+  note: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** 没有评价时 `feedback` 为 null */
+export interface QaFeedbackResponse {
+  feedback: QaFeedback | null
+}
+
+export interface QaFeedbackPayload {
+  rating: QaRating
+  reason?: string | null
+  note?: string | null
+}
+
+/** 记录里的来源快照，字段与检索返回的引用一致（部分可缺省） */
+export interface QaSource {
+  index?: number
+  chunk_id?: string | null
+  document_id?: string | null
+  title?: string | null
+  page_no?: number | null
+  snippet?: string | null
+  score?: number | null
+  sensitivity?: string | null
+}
+
+export interface QaIssue {
+  id: string
+  representative_question: string
+  record_count: number
+  dislike_count: number
+  reasons: string[]
+  sensitivity: Sensitivity
+  status: QaIssueStatus
+  disposition: QaDisposition | null
+  assignee_id: string | null
+  assignee_name: string | null
+  primary_document_id: string | null
+  primary_document_title: string | null
+  hit_count: number | null
+  first_seen_at: string
+  last_seen_at: string
+  created_at: string | null
+}
+
+export interface QaIssueListResponse {
+  items: QaIssue[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface QaRecordItem {
+  id: string
+  question: string
+  answer_excerpt: string
+  answer_status: string
+  reasons: string[]
+  sensitivity: Sensitivity
+  user_name: string | null
+  hit_count: number
+  top_score: number | null
+  sources: QaSource[]
+  created_at: string
+  finished_at: string | null
+}
+
+export interface QaIssueEvent {
+  id: string
+  action: string
+  actor_name: string | null
+  note: string | null
+  detail: Record<string, unknown>
+  created_at: string
+}
+
+export interface QaIssueDetail extends QaIssue {
+  records: QaRecordItem[]
+  events: QaIssueEvent[]
+}
+
+export interface QaAssignee {
+  id: string
+  display_name: string
+  username: string
+}
+
+/* ------------------------------ 查询改写实验室 ----------------------------- */
+
+export type RewriteMode = 'auto' | 'manual'
+
+/** 与后端路由决策一一对应；`blocked_*` 表示"本该改写但被拦下"。 */
+export type StrategyDecision =
+  | 'execute'
+  | 'not_triggered'
+  | 'blocked_by_allowlist'
+  | 'blocked_by_budget'
+  | 'blocked_by_dependency'
+  | 'unavailable'
+
+export interface RewriteHistoryTurn {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export interface RewriteRunParams {
+  query: string
+  history?: RewriteHistoryTurn[]
+  mode?: RewriteMode
+  allowlist?: string[]
+  budget?: number
+  quality_threshold?: number
+  top_k?: number
+  doc_type?: DocType
+}
+
+export interface RewriteRequestEcho {
+  query: string
+  mode: RewriteMode
+  allowlist: string[]
+  budget: number
+  quality_threshold: number
+  top_k: number
+  doc_type: string | null
+  history_turns: number
+}
+
+export interface RewriteReference {
+  cue: string
+  resolved: boolean
+  reason: string
+}
+
+export interface RewriteUnderstanding {
+  intent: string
+  complexity: string
+  entities: string[]
+  references: RewriteReference[]
+  constraints: string[]
+  candidate_strategies: string[]
+  source: string
+  degraded: boolean
+}
+
+export interface RewriteDecision {
+  strategy: string
+  label: string
+  kind: 'text' | 'expand'
+  decision: StrategyDecision
+  evidence: string[]
+  reason: string
+}
+
+export interface RewriteNode {
+  id: string
+  label: string
+  kind: string
+  depends_on: string[]
+  status: string
+  elapsed_ms: number
+}
+
+export interface RewriteStep {
+  strategy: string
+  label: string
+  status: string
+  text_in: string
+  text_out: string
+  reason: string
+}
+
+export interface RewriteArmMetrics {
+  top1: number
+  above_tau: number
+  docs: number
+}
+
+export interface RewriteArm {
+  arm: 'baseline' | 'rewritten'
+  queries: string[]
+  metrics: RewriteArmMetrics
+  hit_count: number
+}
+
+export interface RewriteSecondStage {
+  triggered: boolean
+  actions: string[]
+  new_chunks: number
+  reason: string
+}
+
+export interface RewriteFusedChunk {
+  index: number
+  chunk_id: string
+  document_id: string
+  title: string
+  version_no: number
+  content: string
+  truncated: boolean
+  heading_path: string | null
+  score: number
+  sources: string[]
+}
+
+export interface RewriteTrace {
+  request: RewriteRequestEcho
+  understanding: RewriteUnderstanding
+  routing: RewriteDecision[]
+  workflow: RewriteNode[]
+  rewrites: RewriteStep[]
+  arms: RewriteArm[]
+  evaluation: { verdict: 'sufficient' | 'insufficient'; lift: number; reason: string }
+  second_stage: RewriteSecondStage
+  fusion: { method: string; k: number; before: number; after: number; items: RewriteFusedChunk[] }
+  totals: { llm_calls: number; embed_calls: number; retrieval_calls: number; elapsed_ms: number }
+  degraded: boolean
+  warnings: string[]
 }

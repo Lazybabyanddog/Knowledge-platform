@@ -1,12 +1,13 @@
-"""权限矩阵：角色 -> 权限集合。
+"""权限清单与内置角色的初始权限。
 
-单一事实来源。接口层用 ``require_permission`` 声明能力要求，
-服务层在需要"仅本人可操作"时再用归属校验做二次判断。
+运行时判定以数据库中的 ``role_permission`` 为准（见 ``core/deps.py``）；
+本模块的 ``Permission`` 是可判定能力的清单，``BUILTIN_ROLE_PERMISSIONS`` 与
+``PERMISSION_CATALOG`` 只作为迁移/种子数据的来源，不再参与请求期计算。
 """
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from dataclasses import dataclass
 from enum import StrEnum
 
 from app.domain.enums import RoleCode
@@ -14,6 +15,8 @@ from app.domain.enums import RoleCode
 
 class Permission(StrEnum):
     USER_MANAGE = "user:manage"
+    DEPARTMENT_MANAGE = "department:manage"
+    ROLE_MANAGE = "role:manage"
     AUDIT_READ = "audit:read"
 
     DOCUMENT_READ = "document:read"
@@ -30,6 +33,37 @@ class Permission(StrEnum):
 
     REVIEW_SUBMIT = "review:submit"
     REVIEW_APPROVE = "review:approve"
+
+    QA_MANAGE = "qa:manage"
+
+
+@dataclass(frozen=True)
+class PermissionMeta:
+    """权限目录的一行：编码、中文名、分组与展示顺序。"""
+
+    code: Permission
+    name: str
+    group: str
+    sort_order: int
+
+
+PERMISSION_CATALOG: tuple[PermissionMeta, ...] = (
+    PermissionMeta(Permission.USER_MANAGE, "用户管理", "用户", 10),
+    PermissionMeta(Permission.DEPARTMENT_MANAGE, "部门管理", "组织", 20),
+    PermissionMeta(Permission.ROLE_MANAGE, "角色权限管理", "角色", 30),
+    PermissionMeta(Permission.AUDIT_READ, "审计日志查看", "审计", 40),
+    PermissionMeta(Permission.DOCUMENT_READ, "文档查看", "文档", 50),
+    PermissionMeta(Permission.DOCUMENT_WRITE, "文档上传", "文档", 60),
+    PermissionMeta(Permission.DOCUMENT_DELETE, "文档删除", "文档", 70),
+    PermissionMeta(Permission.PARSE_RUN, "解析执行", "解析", 80),
+    PermissionMeta(Permission.ONTOLOGY_READ, "本体查看", "本体", 90),
+    PermissionMeta(Permission.ONTOLOGY_MANAGE, "本体管理", "本体", 100),
+    PermissionMeta(Permission.ONTOLOGY_REVIEW, "本体审核", "本体", 110),
+    PermissionMeta(Permission.GRAPH_READ, "图谱查看", "图谱", 120),
+    PermissionMeta(Permission.REVIEW_SUBMIT, "审批提交", "审批", 130),
+    PermissionMeta(Permission.REVIEW_APPROVE, "审批通过", "审批", 140),
+    PermissionMeta(Permission.QA_MANAGE, "问答治理", "问答", 150),
+)
 
 
 _ADMIN = frozenset(Permission)
@@ -65,20 +99,10 @@ _VIEWER = frozenset(
     }
 )
 
-ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
+# 内置角色的初始权限；运营在角色管理里调整后，seed 不会覆盖
+BUILTIN_ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
     RoleCode.ADMIN.value: _ADMIN,
     RoleCode.REVIEWER.value: _REVIEWER,
     RoleCode.CONTRIBUTOR.value: _CONTRIBUTOR,
     RoleCode.VIEWER.value: _VIEWER,
 }
-
-
-def permissions_for(roles: Iterable[str]) -> frozenset[Permission]:
-    granted: set[Permission] = set()
-    for role in roles:
-        granted |= ROLE_PERMISSIONS.get(role, frozenset())
-    return frozenset(granted)
-
-
-def has_permission(roles: Iterable[str], permission: Permission) -> bool:
-    return permission in permissions_for(roles)

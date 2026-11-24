@@ -71,7 +71,8 @@ def _resolve_principal(session, workspace_id: uuid.UUID, username: str) -> Princ
     )
     if user is None:
         raise SystemExit(f"工作空间内找不到用户：{username}")
-    return Principal(user=user, roles=UserRepository(session).list_roles(user.id))
+    roles, permissions = UserRepository(session).list_roles_and_permissions(user.id)
+    return Principal(user=user, roles=roles, permissions=frozenset(permissions))
 
 
 def main(argv: list[str] | None = None) -> int:

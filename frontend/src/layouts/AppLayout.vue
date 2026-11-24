@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 
 import type { Permission } from '@/constants'
-import { ROLE_LABELS } from '@/constants'
 import { appRoutes } from '@/router'
 import { useAuthStore } from '@/stores/auth'
+import { useRolesStore } from '@/stores/roles'
 
 interface NavItem {
   path: string
@@ -19,6 +19,7 @@ interface NavItem {
 const ICONS: Record<string, string> = {
   ask: 'ChatDotRound',
   documents: 'Files',
+  'rewrite-lab': 'MagicStick',
   'parse-tasks': 'DataAnalysis',
   'parse-strategies': 'SetUp',
   ontology: 'Share',
@@ -26,10 +27,14 @@ const ICONS: Record<string, string> = {
   graph: 'Connection',
   reviews: 'Stamp',
   'review-flows': 'Operation',
+  'qa-triage': 'ChatLineSquare',
   users: 'User',
+  departments: 'OfficeBuilding',
+  roles: 'Key',
 }
 
 const auth = useAuthStore()
+const roles = useRolesStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -60,9 +65,13 @@ const groups = computed(() => {
 
 const currentTitle = computed(() => route.meta.title ?? '企业知识库')
 
-const roleText = computed(() =>
-  auth.roles.map((role) => ROLE_LABELS[role] ?? role).join(' · ') || '—',
+const roleText = computed(
+  () => auth.roles.map((role) => roles.label(role)).join(' · ') || '—',
 )
+
+onMounted(() => {
+  void roles.ensureLoaded()
+})
 
 async function onCommand(command: string): Promise<void> {
   if (command === 'logout') {

@@ -29,6 +29,7 @@ class DocumentVersionItem(BaseModel):
     chunk_count: int = 0
     indexed_at: datetime | None = None
     created_by: str | None = None
+    created_by_name: str | None = None
     created_at: datetime
 
 
@@ -45,7 +46,11 @@ class DocumentItem(BaseModel):
     tags: list[str] = Field(default_factory=list)
     extra_metadata: dict[str, Any] = Field(default_factory=dict)
     deleted_at: datetime | None = None
+    # 上传人（首次上传者）与其当前所属部门，取自人员档案实时数据
     created_by: str | None = None
+    created_by_name: str | None = None
+    created_by_department_id: str | None = None
+    created_by_department_name: str | None = None
     created_at: datetime
     updated_at: datetime
     current_version: DocumentVersionItem | None = None
@@ -94,6 +99,7 @@ class DocumentQuery(BaseModel):
     tag: str | None = Field(default=None, max_length=32)
     sensitivity: Sensitivity | None = None
     owner_id: str | None = None
+    department_id: str | None = None
     created_from: datetime | None = None
     created_to: datetime | None = None
     sort_by: Literal["created_at", "updated_at"] = "created_at"

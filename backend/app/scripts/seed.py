@@ -23,7 +23,13 @@ from app.domain.enums import (
     UserStatus,
     WorkspaceStatus,
 )
-from app.infra.db.models import AppUser, ParseStrategy, Role, UserRole, Workspace
+from app.domain.policies import BUILTIN_ROLE_PERMISSIONS, PERMISSION_CATALOG
+from app.infra.db.models import (
+    AppUser,
+    ParseStrategy,
+    Permission as PermissionRow,
+)
+from app.infra.db.models import Role, RolePermission, UserRole, Workspace
 from app.infra.db.session import session_scope
 
 logger = logging.getLogger(__name__)
@@ -110,6 +116,51 @@ def ensure_roles(session: Session) -> tuple[dict[str, Role], int]:
     return existing, created
 
 
+def ensure_permissions(session: Session) -> tuple[int, int]:
+    """补齐权限目录与内置角色的初始授权。
+
+    只补缺失项：已存在的权限不更新，已被运营调整过的内置角色不再覆盖
+    （仅当该角色一条授权都没有时才视为"未初始化"并写入初始矩阵）。
+    """
+
+    existing_codes = set(session.scalars(select(PermissionRow.code)).all())
+    permissions_created = 0
+    for meta in PERMISSION_CATALOG:
+        code = meta.code.value
+        if code in existing_codes:
+            continue
+        session.add(
+            PermissionRow(
+                code=code,
+                name=meta.name,
+                group_name=meta.group,
+                sort_order=meta.sort_order,
+            )
+        )
+        existing_codes.add(code)
+        permissions_created += 1
+    session.flush()
+
+    roles = {role.code: role for role in session.scalars(select(Role)).all()}
+    grants_created = 0
+    for role_code, permissions in BUILTIN_ROLE_PERMISSIONS.items():
+        role = roles.get(role_code)
+        if role is None:
+            continue
+        initialized = session.scalar(
+            select(RolePermission.permission_code).where(
+                RolePermission.role_id == role.id
+            ).limit(1)
+        )
+        if initialized is not None:
+            continue
+        for permission in permissions:
+            session.add(RolePermission(role_id=role.id, permission_code=permission.value))
+            grants_created += 1
+    session.flush()
+    return permissions_created, grants_created
+
+
 def ensure_admin(
     session: Session, workspace: Workspace, roles: dict[str, Role]
 ) -> tuple[AppUser, bool]:
@@ -172,12 +223,15 @@ def ensure_strategies(session: Session, workspace: Workspace, created_by: Any) -
 def run(session: Session) -> dict[str, object]:
     workspace, workspace_created = ensure_workspace(session)
     roles, roles_created = ensure_roles(session)
+    permissions_created, grants_created = ensure_permissions(session)
     admin, admin_created = ensure_admin(session, workspace, roles)
     strategies_created = ensure_strategies(session, workspace, admin.id)
     return {
         "workspace": workspace.slug,
         "workspace_created": workspace_created,
         "roles_created": roles_created,
+        "permissions_created": permissions_created,
+        "grants_created": grants_created,
         "admin": admin.username,
         "admin_created": admin_created,
         "strategies_created": strategies_created,
@@ -193,6 +247,8 @@ def main() -> int:
         "seed done: "
         f"workspace={result['workspace']}(created={result['workspace_created']}) "
         f"roles_created={result['roles_created']} "
+        f"permissions_created={result['permissions_created']} "
+        f"grants_created={result['grants_created']} "
         f"admin={result['admin']}(created={result['admin_created']}) "
         f"strategies_created={result['strategies_created']}"
     )

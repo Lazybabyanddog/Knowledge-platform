@@ -15,20 +15,14 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.deps import Principal
-from app.domain.enums import AuditAction, DocumentStatus, RoleCode, Sensitivity
+from app.domain.enums import AuditAction, DocumentStatus
+from app.domain.visibility import allowed_sensitivities
 from app.infra.db.models.document import Document, DocumentVersion
 from app.infra.db.models.retrieval import DocumentChunk
 from app.infra.llm import provider
 from app.services.audit_service import AuditService
 
 logger = logging.getLogger(__name__)
-
-_SENSITIVITY_ORDER = [
-    Sensitivity.PUBLIC.value,
-    Sensitivity.INTERNAL.value,
-    Sensitivity.CONFIDENTIAL.value,
-    Sensitivity.SECRET.value,
-]
 
 
 class RetrievalUnavailable(RuntimeError):
@@ -49,16 +43,6 @@ class ChunkHit:
     block_ids: list[str]
 
 
-def allowed_sensitivities(principal: Principal) -> list[str]:
-    """管理员看全部；其他人只到配置的可见上限（默认 public + internal）。"""
-    if principal.has_role(RoleCode.ADMIN.value):
-        return list(_SENSITIVITY_ORDER)
-    limit = settings.retrieval_max_sensitivity
-    if limit not in _SENSITIVITY_ORDER:
-        limit = Sensitivity.INTERNAL.value
-    return _SENSITIVITY_ORDER[: _SENSITIVITY_ORDER.index(limit) + 1]
-
-
 class RetrievalService:
     def __init__(self, db: Session) -> None:
         self.db = db
@@ -75,19 +59,86 @@ class RetrievalService:
         query = (question or "").strip()
         if not query:
             return []
+        return self.search_many(principal, [query], top_k=top_k, doc_type=doc_type)[query]
+
+    def search_with_vector(
+        self,
+        principal: Principal,
+        question: str,
+        *,
+        top_k: int | None = None,
+        doc_type: str | None = None,
+    ) -> tuple[list[ChunkHit], list[float]]:
+        """单句检索，同时把问题向量交回调用方。
+
+        问答落痕需要问题向量做缺口聚类；``search_many`` 只为批量改写服务，
+        不返回向量，若在这里再调一次 embedding 就白付一次模型成本。
+        过滤条件仍全部来自 ``_base_stmt``，与检索口径不会分叉。
+        """
+        query = (question or "").strip()
+        if not query:
+            return [], []
         if not provider.is_embedding_configured():
             raise RetrievalUnavailable("未配置 embedding 模型，无法检索")
-
         try:
             vector = provider.embed_texts([query])[0]
         except provider.EmbeddingError as exc:
             raise RetrievalUnavailable(f"问题向量化失败: {exc}") from exc
 
         limit = top_k or settings.retrieval_top_k
-        oversample = max(1, settings.retrieval_oversample)
+        self._tune_hnsw()
+        stmt = self._base_stmt(principal, vector, doc_type=doc_type, limit=limit)
+        hits = [self._to_hit(row) for row in self.db.execute(stmt).all()][:limit]
+        return hits, list(vector)
+
+    def search_many(
+        self,
+        principal: Principal,
+        queries: list[str],
+        *,
+        top_k: int | None = None,
+        doc_type: str | None = None,
+    ) -> dict[str, list[ChunkHit]]:
+        """批量检索：一次向量化，每个查询一条语句。
+
+        改写链路一次要发 N 条查询，逐条调用 ``search`` 会付 N 次向量化成本；
+        而过滤条件必须完全一致，所以语句统一由 ``_base_stmt`` 生成。
+        """
+        ordered: list[str] = []
+        for raw in queries:
+            text = (raw or "").strip()
+            if text and text not in ordered:
+                ordered.append(text)
+        if not ordered:
+            return {}
+        if not provider.is_embedding_configured():
+            raise RetrievalUnavailable("未配置 embedding 模型，无法检索")
+
+        try:
+            vectors = provider.embed_texts(ordered)
+        except provider.EmbeddingError as exc:
+            raise RetrievalUnavailable(f"问题向量化失败: {exc}") from exc
+
+        limit = top_k or settings.retrieval_top_k
         # HNSW 在过滤条件下可能召回不足，先过采样，再截断
         self._tune_hnsw()
 
+        result: dict[str, list[ChunkHit]] = {}
+        for text, vector in zip(ordered, vectors, strict=True):
+            stmt = self._base_stmt(principal, vector, doc_type=doc_type, limit=limit)
+            result[text] = [self._to_hit(row) for row in self.db.execute(stmt).all()][:limit]
+        return result
+
+    def _base_stmt(
+        self,
+        principal: Principal,
+        vector: list[float],
+        *,
+        doc_type: str | None,
+        limit: int,
+    ) -> Select[Any]:
+        """过滤条件与向量排序的唯一来源：对照组与改写组只能查询文本不同。"""
+        oversample = max(1, settings.retrieval_oversample)
         distance = DocumentChunk.embedding.cosine_distance(vector)
         stmt: Select[Any] = (
             select(
@@ -111,24 +162,23 @@ class RetrievalService:
         )
         if doc_type:
             stmt = stmt.where(Document.doc_type == doc_type)
+        return stmt
 
-        rows = self.db.execute(stmt).all()
-        hits = [
-            ChunkHit(
-                chunk_id=str(chunk.id),
-                document_id=str(chunk.document_id),
-                title=title,
-                version_no=version_no,
-                content=chunk.content,
-                score=round(1.0 - float(distance_value), 6),
-                heading_path=chunk.heading_path,
-                first_page_no=chunk.first_page_no,
-                last_page_no=chunk.last_page_no,
-                block_ids=list(chunk.block_ids or []),
-            )
-            for chunk, title, version_no, distance_value in rows
-        ]
-        return hits[:limit]
+    @staticmethod
+    def _to_hit(row: Any) -> ChunkHit:
+        chunk, title, version_no, distance_value = row
+        return ChunkHit(
+            chunk_id=str(chunk.id),
+            document_id=str(chunk.document_id),
+            title=title,
+            version_no=version_no,
+            content=chunk.content,
+            score=round(1.0 - float(distance_value), 6),
+            heading_path=chunk.heading_path,
+            first_page_no=chunk.first_page_no,
+            last_page_no=chunk.last_page_no,
+            block_ids=list(chunk.block_ids or []),
+        )
 
     def _tune_hnsw(self) -> None:
         """只影响当前事务；参数来自配置，转成整数后拼接，避免绑定参数。"""

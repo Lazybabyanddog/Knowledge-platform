@@ -1,12 +1,18 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { ElMessage } from 'element-plus'
 
 import { ApiError, errorMessage } from '@/api/http'
+import { qaApi } from '@/api/qa'
 import { retrievalApi } from '@/api/retrieval'
-import type { DocType, RetrievalSource } from '@/api/types'
-import { DOC_TYPE } from '@/utils/format'
+import type { DocType, QaDislikeReason, QaFeedback, QaRating, RetrievalSource } from '@/api/types'
+import { DOC_TYPE, QA_DISLIKE_REASON } from '@/utils/format'
 
 type Phase = 'idle' | 'streaming' | 'done' | 'stopped' | 'error'
+type FeedbackTarget = 'current' | 'last'
+
+/** 只存记录标识，不放答案正文：刷新后回读评价，也避免把资料内容留在本地存储。 */
+const LAST_RECORD_KEY = 'ai-platform-last-qa-record'
 
 const question = ref('')
 const docType = ref<DocType | ''>('')
@@ -20,12 +26,40 @@ const expanded = ref<string[]>([])
 const answerBox = ref<HTMLDivElement>()
 const stopRequested = ref(false)
 
+/* ------------------------------- 反馈 ------------------------------- */
+
+const currentRecordId = ref('')
+const currentFeedback = ref<QaFeedback | null>(null)
+const lastRecordId = ref('')
+const lastFeedback = ref<QaFeedback | null>(null)
+const feedbackSaving = ref(false)
+const feedbackOpen = ref(false)
+const feedbackTarget = ref<FeedbackTarget>('current')
+const feedbackForm = reactive<{
+  rating: QaRating
+  reason: QaDislikeReason | ''
+  note: string
+}>({ rating: 'dislike', reason: '', note: '' })
+
 let controller: AbortController | null = null
 
 const docTypeOptions = Object.entries(DOC_TYPE).map(([value, label]) => ({ value, label }))
+const dislikeReasonOptions = Object.entries(QA_DISLIKE_REASON).map(([value, label]) => ({
+  value,
+  label,
+}))
 const streaming = computed(() => phase.value === 'streaming')
 const canAsk = computed(() => question.value.trim().length > 0 && !streaming.value)
 const showEmpty = computed(() => phase.value === 'done' && sources.value.length === 0)
+const canGiveFeedback = computed(
+  () => phase.value === 'done' && !!currentRecordId.value && !streaming.value,
+)
+const showLastFeedback = computed(
+  () => phase.value === 'idle' && !!lastFeedback.value && !currentRecordId.value,
+)
+const feedbackNeedsNote = computed(
+  () => feedbackForm.rating === 'dislike' && feedbackForm.reason === 'other',
+)
 
 const statusText: Record<Phase, string> = {
   idle: '待提问',
@@ -50,6 +84,8 @@ function resetAnswer(): void {
   elapsed.value = 0
   expanded.value = []
   stopRequested.value = false
+  currentRecordId.value = ''
+  currentFeedback.value = null
 }
 
 function isAbort(error: unknown): boolean {
@@ -89,6 +125,10 @@ async function ask(): Promise<void> {
         onDone: (payload) => {
           phase.value = 'done'
           elapsed.value = payload.elapsed_ms
+          currentRecordId.value = payload.qa_record_id
+          if (payload.qa_record_id) {
+            localStorage.setItem(LAST_RECORD_KEY, payload.qa_record_id)
+          }
         },
         onError: (payload) => {
           phase.value = 'error'
@@ -119,6 +159,91 @@ function stop(): void {
   stopRequested.value = true
   controller.abort()
 }
+
+/* ------------------------------- 评价 ------------------------------- */
+
+function feedbackLabel(item: QaFeedback | null): string {
+  if (!item) return ''
+  if (item.rating === 'like') return '认可'
+  if (!item.reason) return '不认可'
+  return `不认可 · ${QA_DISLIKE_REASON[item.reason] ?? item.reason}`
+}
+
+function targetRecordId(): string {
+  return feedbackTarget.value === 'current' ? currentRecordId.value : lastRecordId.value
+}
+
+function openFeedbackEditor(target: FeedbackTarget, rating: QaRating): void {
+  feedbackTarget.value = target
+  const existing = target === 'current' ? currentFeedback.value : lastFeedback.value
+  feedbackForm.rating = existing?.rating ?? rating
+  feedbackForm.reason = (existing?.reason as QaDislikeReason | null) ?? ''
+  feedbackForm.note = existing?.note ?? ''
+  feedbackOpen.value = true
+}
+
+async function saveFeedback(): Promise<void> {
+  const recordId = targetRecordId()
+  if (!recordId) return
+  if (feedbackForm.rating === 'dislike' && !feedbackForm.reason) {
+    ElMessage.warning('请选择不认可的原因')
+    return
+  }
+  if (feedbackNeedsNote.value && !feedbackForm.note.trim()) {
+    ElMessage.warning('选择“其他”时请填写补充说明')
+    return
+  }
+
+  feedbackSaving.value = true
+  try {
+    const data = await qaApi.submitFeedback(recordId, {
+      rating: feedbackForm.rating,
+      reason: feedbackForm.rating === 'dislike' ? feedbackForm.reason || null : null,
+      note: feedbackForm.rating === 'dislike' ? feedbackForm.note.trim() || null : null,
+    })
+    if (feedbackTarget.value === 'current') currentFeedback.value = data.feedback
+    else lastFeedback.value = data.feedback
+    feedbackOpen.value = false
+    ElMessage.success('评价已记录')
+  } catch (error) {
+    ElMessage.error(errorMessage(error))
+  } finally {
+    feedbackSaving.value = false
+  }
+}
+
+async function likeNow(target: FeedbackTarget): Promise<void> {
+  feedbackTarget.value = target
+  feedbackForm.rating = 'like'
+  feedbackForm.reason = ''
+  feedbackForm.note = ''
+  await saveFeedback()
+}
+
+function dismissLastFeedback(): void {
+  lastFeedback.value = null
+  lastRecordId.value = ''
+  localStorage.removeItem(LAST_RECORD_KEY)
+}
+
+onMounted(async () => {
+  const stored = localStorage.getItem(LAST_RECORD_KEY)
+  if (!stored) return
+  lastRecordId.value = stored
+  try {
+    lastFeedback.value = (await qaApi.getFeedback(stored)).feedback
+  } catch {
+    // 记录超期清理或已不属于当前用户：丢掉本地标识，不打扰本次使用
+    lastFeedback.value = null
+    lastRecordId.value = ''
+    localStorage.removeItem(LAST_RECORD_KEY)
+    return
+  }
+  if (!lastFeedback.value) {
+    lastRecordId.value = ''
+    localStorage.removeItem(LAST_RECORD_KEY)
+  }
+})
 
 function toggleSource(chunkId: string): void {
   expanded.value = expanded.value.includes(chunkId)
@@ -152,6 +277,21 @@ function onKeydown(event: KeyboardEvent): void {
     </div>
 
     <section class="card card-pad ask-box">
+      <div v-if="showLastFeedback" class="last-feedback">
+        <span class="muted small">上一次回答的评价：</span>
+        <el-tag
+          size="small"
+          :type="lastFeedback?.rating === 'like' ? 'success' : 'danger'"
+          effect="light"
+        >
+          {{ feedbackLabel(lastFeedback) }}
+        </el-tag>
+        <el-button link type="primary" size="small" @click="openFeedbackEditor('last', 'dislike')">
+          修改评价
+        </el-button>
+        <el-button link size="small" @click="dismissLastFeedback">不再提示</el-button>
+      </div>
+
       <el-input
         v-model="question"
         type="textarea"
@@ -226,6 +366,40 @@ function onKeydown(event: KeyboardEvent): void {
             {{ answer }}<span v-if="streaming" class="caret" />
           </div>
         </div>
+
+        <div v-if="canGiveFeedback" class="feedback-bar">
+          <span class="muted small">这条回答有帮助吗？</span>
+          <template v-if="currentFeedback">
+            <el-tag
+              size="small"
+              :type="currentFeedback.rating === 'like' ? 'success' : 'danger'"
+              effect="light"
+            >
+              {{ feedbackLabel(currentFeedback) }}
+            </el-tag>
+            <el-button
+              link
+              type="primary"
+              size="small"
+              @click="openFeedbackEditor('current', 'dislike')"
+            >
+              修改评价
+            </el-button>
+          </template>
+          <template v-else>
+            <el-button size="small" type="success" plain @click="likeNow('current')">
+              认可
+            </el-button>
+            <el-button
+              size="small"
+              type="danger"
+              plain
+              @click="openFeedbackEditor('current', 'dislike')"
+            >
+              不认可
+            </el-button>
+          </template>
+        </div>
       </div>
     </section>
 
@@ -265,6 +439,49 @@ function onKeydown(event: KeyboardEvent): void {
         <li>检索依赖向量索引：新审批通过的文档需要等待索引完成后再提问。</li>
       </ul>
     </section>
+
+    <el-dialog
+      v-model="feedbackOpen"
+      :title="feedbackTarget === 'last' ? '评价上一次回答' : '评价这次回答'"
+      width="460px"
+    >
+      <el-form label-position="top">
+        <el-form-item label="评价">
+          <el-radio-group v-model="feedbackForm.rating">
+            <el-radio-button value="like">认可</el-radio-button>
+            <el-radio-button value="dislike">不认可</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <template v-if="feedbackForm.rating === 'dislike'">
+          <el-form-item label="原因（必选）">
+            <el-select v-model="feedbackForm.reason" placeholder="哪里不满意" style="width: 100%">
+              <el-option
+                v-for="item in dislikeReasonOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item :label="feedbackNeedsNote ? '补充说明（必填）' : '补充说明（可选）'">
+            <el-input
+              v-model="feedbackForm.note"
+              type="textarea"
+              :rows="3"
+              maxlength="1000"
+              show-word-limit
+              placeholder="例如：引用的制度版本已经过期"
+            />
+          </el-form-item>
+        </template>
+      </el-form>
+      <template #footer>
+        <el-button @click="feedbackOpen = false">取消</el-button>
+        <el-button type="primary" :loading="feedbackSaving" @click="saveFeedback">
+          提交评价
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -297,6 +514,26 @@ function onKeydown(event: KeyboardEvent): void {
   line-height: 1.75;
   font-size: 14.5px;
   color: var(--ink);
+}
+
+.last-feedback,
+.feedback-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.last-feedback {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--brand-soft);
+}
+
+.feedback-bar {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
 }
 
 .caret {

@@ -189,6 +189,43 @@ export const REVIEW_ACTION: Record<string, StatusMeta> = {
   withdraw: { label: '撤回', tone: 'info' },
 }
 
+/** 低置信判定原因；前三个是硬信号，后三个只用于辅助排序与筛选。 */
+export const QA_REASON: Record<string, StatusMeta> = {
+  no_hit: { label: '无命中', tone: 'danger' },
+  no_citation: { label: '无引用', tone: 'danger' },
+  user_dislike: { label: '用户不认可', tone: 'warning' },
+  few_hits: { label: '命中偏少', tone: 'info' },
+  low_score: { label: '匹配度低', tone: 'info' },
+  score_gap: { label: '候选分差小', tone: 'info' },
+}
+
+export const QA_DISLIKE_REASON: Record<string, string> = {
+  off_topic: '答非所问',
+  fake_citation: '引用不实',
+  outdated: '内容过时',
+  incomplete: '回答不完整',
+  other: '其他原因',
+}
+
+export const QA_ISSUE_STATUS: Record<string, StatusMeta> = {
+  pending: { label: '待处置', tone: 'warning' },
+  closed: { label: '已关闭', tone: 'info' },
+}
+
+export const QA_DISPOSITION: Record<string, string> = {
+  false_positive: '误报',
+  knowledge_gap: '知识缺口',
+  retrieval_failure: '检索失败',
+  answer_error: '回答错误',
+}
+
+export const QA_ISSUE_ACTION: Record<string, StatusMeta> = {
+  assign: { label: '指派', tone: 'primary' },
+  dispose: { label: '处置结论', tone: 'warning' },
+  close: { label: '关闭', tone: 'info' },
+  reopen: { label: '重开', tone: 'success' },
+}
+
 export const DOC_TYPE: Record<string, string> = {
   pdf: 'PDF',
   office: 'Office',

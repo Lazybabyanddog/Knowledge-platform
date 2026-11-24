@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
@@ -17,6 +18,7 @@ class UserCreateRequest(BaseModel):
     display_name: str = Field(min_length=1, max_length=128)
     email: str | None = Field(default=None, max_length=255)
     roles: list[str] = Field(default_factory=lambda: ["viewer"])
+    department_id: uuid.UUID | None = None
 
 
 class UserUpdateRequest(BaseModel):
@@ -24,6 +26,7 @@ class UserUpdateRequest(BaseModel):
     email: str | None = Field(default=None, max_length=255)
     status: UserStatus | None = None
     roles: list[str] | None = None
+    department_id: uuid.UUID | None = None
 
 
 class ResetPasswordRequest(BaseModel):
@@ -37,6 +40,8 @@ class UserItem(BaseModel):
     email: str | None = None
     status: str
     roles: list[str] = Field(default_factory=list)
+    department_id: str | None = None
+    department_name: str | None = None
     last_login_at: datetime | None = None
     created_at: datetime
 
@@ -51,6 +56,7 @@ class UserListResponse(BaseModel):
 class UserQuery(BaseModel):
     keyword: str | None = Field(default=None, max_length=64)
     status: UserStatus | None = None
+    department_id: uuid.UUID | None = None
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=20, ge=1, le=100)
 

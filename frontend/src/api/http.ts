@@ -121,6 +121,7 @@ export const http = {
   get: <T>(url: string, params?: object) => request<T>({ url, method: 'GET', params }),
   post: <T>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
     request<T>({ url, method: 'POST', data, ...config }),
+  put: <T>(url: string, data?: unknown) => request<T>({ url, method: 'PUT', data }),
   patch: <T>(url: string, data?: unknown) => request<T>({ url, method: 'PATCH', data }),
   delete: <T>(url: string) => request<T>({ url, method: 'DELETE' }),
   upload: <T>(url: string, form: FormData, onProgress?: (percent: number) => void) =>

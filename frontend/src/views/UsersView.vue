@@ -1,20 +1,30 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
+import { departmentApi } from '@/api/departments'
 import { errorMessage } from '@/api/http'
 import { userApi } from '@/api/users'
-import type { UserItem } from '@/api/types'
-import { ROLE_LABELS } from '@/constants'
+import type { DepartmentItem, UserItem } from '@/api/types'
 import { useAuthStore } from '@/stores/auth'
+import { useRolesStore } from '@/stores/roles'
+import { flattenDepartments } from '@/utils/departments'
 import { formatTime } from '@/utils/format'
 
 const auth = useAuthStore()
+const roles = useRolesStore()
 
 const loading = ref(false)
 const rows = ref<UserItem[]>([])
 const total = ref(0)
-const query = reactive({ keyword: '', status: '', page: 1, page_size: 10 })
+const departments = ref<DepartmentItem[]>([])
+const query = reactive({
+  keyword: '',
+  status: '',
+  department_id: '',
+  page: 1,
+  page_size: 10,
+})
 
 const dialogVisible = ref(false)
 const saving = ref(false)
@@ -25,10 +35,21 @@ const form = reactive({
   display_name: '',
   email: '',
   status: 'active',
+  department_id: '',
   roles: ['viewer'] as string[],
 })
 
-const roleOptions = Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label }))
+const roleOptions = computed(() => roles.options)
+const departmentOptions = computed(() => flattenDepartments(departments.value))
+
+async function loadDepartments(): Promise<void> {
+  try {
+    const data = await departmentApi.list()
+    departments.value = data.items
+  } catch {
+    departments.value = []
+  }
+}
 
 async function load(): Promise<void> {
   loading.value = true
@@ -36,6 +57,7 @@ async function load(): Promise<void> {
     const data = await userApi.list({
       keyword: query.keyword || undefined,
       status: query.status || undefined,
+      department_id: query.department_id || undefined,
       page: query.page,
       page_size: query.page_size,
     })
@@ -60,6 +82,7 @@ function openCreate(): void {
   form.display_name = ''
   form.email = ''
   form.status = 'active'
+  form.department_id = ''
   form.roles = ['viewer']
   dialogVisible.value = true
 }
@@ -70,6 +93,7 @@ function openEdit(row: UserItem): void {
   form.display_name = row.display_name
   form.email = row.email ?? ''
   form.status = row.status
+  form.department_id = row.department_id ?? ''
   form.roles = [...row.roles]
   dialogVisible.value = true
 }
@@ -90,6 +114,7 @@ async function save(): Promise<void> {
         display_name: form.display_name.trim(),
         email: form.email.trim() || null,
         status: form.status,
+        department_id: form.department_id || null,
         roles: form.roles,
       })
       ElMessage.success('已保存')
@@ -99,6 +124,7 @@ async function save(): Promise<void> {
         password: form.password,
         display_name: form.display_name.trim(),
         email: form.email.trim() || null,
+        department_id: form.department_id || null,
         roles: form.roles,
       })
       ElMessage.success('用户已创建')
@@ -137,7 +163,11 @@ async function resetPassword(row: UserItem): Promise<void> {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  void load()
+  void loadDepartments()
+  void roles.ensureLoaded()
+})
 </script>
 
 <template>
@@ -164,6 +194,21 @@ onMounted(load)
           <el-option label="启用" value="active" />
           <el-option label="停用" value="disabled" />
         </el-select>
+        <el-select
+          v-model="query.department_id"
+          placeholder="全部部门"
+          clearable
+          filterable
+          style="width: 180px"
+          @change="search"
+        >
+          <el-option
+            v-for="item in departmentOptions"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
+          />
+        </el-select>
         <el-button type="primary" plain @click="search">查询</el-button>
         <div class="spacer" />
         <span class="muted small">共 {{ total }} 个账号</span>
@@ -188,9 +233,14 @@ onMounted(load)
           <template #default="{ row }: { row: UserItem }">
             <div class="row">
               <el-tag v-for="role in row.roles" :key="role" size="small" effect="plain">
-                {{ ROLE_LABELS[role] ?? role }}
+                {{ roles.label(role) }}
               </el-tag>
             </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="部门" min-width="130">
+          <template #default="{ row }: { row: UserItem }">
+            <span class="muted small">{{ row.department_name ?? '—' }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="email" label="邮箱" min-width="180">
@@ -252,6 +302,22 @@ onMounted(load)
         </el-form-item>
         <el-form-item label="邮箱">
           <el-input v-model="form.email" placeholder="name@example.com" />
+        </el-form-item>
+        <el-form-item label="所属部门">
+          <el-select
+            v-model="form.department_id"
+            placeholder="未分配部门"
+            clearable
+            filterable
+            style="width: 100%"
+          >
+            <el-option
+              v-for="item in departmentOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="角色">
           <el-checkbox-group v-model="form.roles">

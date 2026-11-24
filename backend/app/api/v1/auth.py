@@ -66,5 +66,6 @@ def me(principal: CurrentPrincipal) -> MeResponse:
         status=user.status,
         workspace_id=str(user.workspace_id),
         roles=principal.roles,
+        permissions=sorted(principal.permissions),
         last_login_at=user.last_login_at,
     )

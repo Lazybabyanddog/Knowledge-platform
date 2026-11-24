@@ -26,6 +26,11 @@ class AppUser(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     email: Mapped[str | None] = mapped_column(String(255))
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     display_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    department_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("department.id", ondelete="RESTRICT"),
+        index=True,
+    )
     status: Mapped[str] = mapped_column(
         String(16), nullable=False, default=UserStatus.ACTIVE.value, server_default="active"
     )

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import uuid
 from typing import Any
 
 import pytest
@@ -101,6 +102,16 @@ def test_event_stream_stops_and_closes_upstream_when_client_gone(
 
     monkeypatch.setattr(provider, "astream_chat", lambda messages: _upstream())
 
+    finalized: list[tuple[str, str]] = []
+
+    async def _fake_finalize(
+        record_id: Any, answer: str, status: Any, started: float
+    ) -> None:
+        finalized.append((answer, status.value))
+
+    # 记录落库由集成测试覆盖，这里只关心中断时回填的终态
+    monkeypatch.setattr("app.api.v1.retrieval._finalize", _fake_finalize)
+
     class _DisconnectingRequest:
         calls = 0
 
@@ -126,7 +137,7 @@ def test_event_stream_stops_and_closes_upstream_when_client_gone(
         return [
             frame
             async for frame in _event_stream(
-                "问题", [hit], [{"index": 1}], _DisconnectingRequest(), 0.0
+                "问题", [hit], [{"index": 1}], _DisconnectingRequest(), 0.0, uuid.uuid4()
             )
         ]
 
@@ -136,3 +147,5 @@ def test_event_stream_stops_and_closes_upstream_when_client_gone(
     assert sum("event: delta" in frame for frame in frames) == 1
     assert not any("event: done" in frame for frame in frames)
     assert closed["value"] is True, "客户端断开后必须关闭上游流"
+    # 中断也要落终态，且已产出的半截答案要一并保存
+    assert finalized == [("第一段", "interrupted")]

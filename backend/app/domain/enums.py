@@ -137,6 +137,15 @@ class AuditAction(StrEnum):
     USER_UPDATE = "user.update"
     USER_RESET_PASSWORD = "user.reset_password"
 
+    DEPARTMENT_CREATE = "department.create"
+    DEPARTMENT_UPDATE = "department.update"
+    DEPARTMENT_DELETE = "department.delete"
+
+    ROLE_CREATE = "role.create"
+    ROLE_UPDATE = "role.update"
+    ROLE_DELETE = "role.delete"
+    ROLE_PERMISSION_UPDATE = "role.permission_update"
+
     DOCUMENT_UPLOAD = "document.upload"
     DOCUMENT_DOWNLOAD = "document.download"
     DOCUMENT_UPDATE = "document.update"
@@ -179,6 +188,78 @@ class AuditAction(StrEnum):
 
     RETRIEVAL_SEARCH = "retrieval.search"
     RETRIEVAL_ASK = "retrieval.ask"
+
+    QA_FEEDBACK = "qa.feedback"
+    QA_ISSUE_ASSIGN = "qa.issue_assign"
+    QA_ISSUE_DISPOSE = "qa.issue_dispose"
+    QA_ISSUE_CLOSE = "qa.issue_close"
+    QA_ISSUE_REOPEN = "qa.issue_reopen"
+
+
+class QaAnswerStatus(StrEnum):
+    """一次问答的终态；``STREAMING`` 表示流还在进行或进程中途退出留下的孤儿。"""
+
+    STREAMING = "streaming"
+    COMPLETED = "completed"
+    INTERRUPTED = "interrupted"
+    FAILED = "failed"
+
+
+class QaReason(StrEnum):
+    """低置信判定的触发原因。
+
+    前三个是硬信号（一旦命中即进入治理队列）；后三个只是打标，
+    用于在队列里辅助排序与筛选，不单独构成待处置记录。
+    """
+
+    NO_HIT = "no_hit"
+    NO_CITATION = "no_citation"
+    USER_DISLIKE = "user_dislike"
+
+    FEW_HITS = "few_hits"
+    LOW_SCORE = "low_score"
+    SCORE_GAP = "score_gap"
+
+
+HARD_QA_REASONS: frozenset[str] = frozenset(
+    {QaReason.NO_HIT.value, QaReason.NO_CITATION.value, QaReason.USER_DISLIKE.value}
+)
+
+
+class QaRating(StrEnum):
+    LIKE = "like"
+    DISLIKE = "dislike"
+
+
+class QaDislikeReason(StrEnum):
+    """点踩的原因标签，取值固定在契约里，界面按同样顺序展示。"""
+
+    OFF_TOPIC = "off_topic"
+    FAKE_CITATION = "fake_citation"
+    OUTDATED = "outdated"
+    INCOMPLETE = "incomplete"
+    OTHER = "other"
+
+
+class QaIssueStatus(StrEnum):
+    PENDING = "pending"
+    CLOSED = "closed"
+
+
+class QaDisposition(StrEnum):
+    """处置结论；关闭必须给出其中一个。"""
+
+    FALSE_POSITIVE = "false_positive"
+    KNOWLEDGE_GAP = "knowledge_gap"
+    RETRIEVAL_FAILURE = "retrieval_failure"
+    ANSWER_ERROR = "answer_error"
+
+
+class QaIssueAction(StrEnum):
+    ASSIGN = "assign"
+    DISPOSE = "dispose"
+    CLOSE = "close"
+    REOPEN = "reopen"
 
 
 class FileType(StrEnum):

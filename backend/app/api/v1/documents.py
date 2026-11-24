@@ -25,12 +25,7 @@ from app.schemas.document import (
     DocumentVersionItem,
     DownloadUrl,
 )
-from app.services.document_service import (
-    DocumentMeta,
-    DocumentService,
-    document_item,
-    version_item,
-)
+from app.services.document_service import DocumentMeta, DocumentService
 
 logger = logging.getLogger(__name__)
 
@@ -110,10 +105,11 @@ def upload_document(
         tags=_parse_tags(tags),
         extra_metadata=_parse_metadata(extra_metadata),
     )
-    document, version = DocumentService(db).create_document(
+    service = DocumentService(db)
+    document, version = service.create_document(
         principal, file, meta, ip=client_ip(request)
     )
-    return document_item(document, version)
+    return service.attributed_item(document, version)
 
 
 @router.post("/batch", response_model=BatchUploadResponse, summary="批量上传")
@@ -188,14 +184,15 @@ def upload_version(
     file: Annotated[UploadFile, File(description="新版本文件")],
     change_note: Annotated[str | None, Form()] = None,
 ) -> DocumentVersionItem:
-    _, version = DocumentService(db).add_version(
+    service = DocumentService(db)
+    _, version = service.add_version(
         principal,
         document_id,
         file,
         change_note=change_note,
         ip=client_ip(request),
     )
-    return version_item(version)
+    return service.version_item_with_uploader(version)
 
 
 @router.get(
