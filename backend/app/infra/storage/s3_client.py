@@ -52,6 +52,10 @@ class ObjectStorage:
             raise InternalError(f"对象存储不可用: {exc.code}") from exc
         self._bucket_ready = True
 
+    def ping(self) -> None:
+        """就绪检查用：只确认 bucket 可读，不创建（创建是写操作，探针不该有副作用）。"""
+        self._client.bucket_exists(self.bucket)
+
     # ---- 写入 ----
     def put_stream(
         self,

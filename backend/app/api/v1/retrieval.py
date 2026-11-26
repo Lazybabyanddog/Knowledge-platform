@@ -138,8 +138,11 @@ async def ask(
     await run_in_threadpool(db.commit)
 
     sources = [hit_to_source(hit, index) for index, hit in enumerate(hits, start=1)]
+    glossary_lines = sum(len(hit.glossary) for hit in hits)
     return StreamingResponse(
-        _event_stream(payload.question, hits, sources, request, started, qa_record_id),
+        _event_stream(
+            payload.question, hits, sources, request, started, qa_record_id, glossary_lines
+        ),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -161,6 +164,7 @@ async def _event_stream(
     request: Request,
     started: float,
     qa_record_id: uuid.UUID,
+    glossary_lines: int = 0,
 ) -> AsyncIterator[str]:
     yield _sse("sources", {"sources": sources})
 
@@ -169,7 +173,12 @@ async def _event_stream(
         await _finalize(qa_record_id, NO_HIT_ANSWER, QaAnswerStatus.COMPLETED, started)
         yield _sse(
             "done",
-            {"elapsed_ms": _elapsed(started), "sources": 0, "qa_record_id": str(qa_record_id)},
+            {
+                "elapsed_ms": _elapsed(started),
+                "sources": 0,
+                "qa_record_id": str(qa_record_id),
+                "glossary_lines": 0,
+            },
         )
         return
 
@@ -211,6 +220,7 @@ async def _event_stream(
             "elapsed_ms": _elapsed(started),
             "sources": len(hits),
             "qa_record_id": str(qa_record_id),
+            "glossary_lines": glossary_lines,
         },
     )
 

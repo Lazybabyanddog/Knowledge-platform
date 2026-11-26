@@ -24,6 +24,16 @@ class UnknownEngineError(ParseError):
     """策略引用了未注册的引擎，触发解析前就应拦截。"""
 
 
+class MineruUnavailableError(ParseError):
+    """MinerU 服务不可达、超时或返回 5xx：是服务故障，值得按重试预算重跑。
+
+    与 ``ParseError`` 的区别只在对外错误码：前者不可重试，这个可重试，
+    运维据此判断"去修服务"还是"去修文档"。
+    """
+
+    task_error_code = "mineru_unavailable"
+
+
 @dataclass(slots=True)
 class ParsedBlock:
     """引擎产出的单个内容块；seq 与 parent_index 在 normalize 节点统一分配。"""
@@ -66,6 +76,14 @@ class ParseEngine(ABC):
 
     def supports(self, doc_type: str) -> bool:
         return doc_type in self.doc_types or not self.doc_types
+
+    def config_problem(self) -> str | None:
+        """引擎当前不可用的原因；``None`` 表示可用。
+
+        保存策略时用它提前拦截（例如 MinerU 服务地址未配置），
+        避免把"注定失败"的配置存下来，等到 worker 里才报错。
+        """
+        return None
 
     @abstractmethod
     def parse(self, source: ParseInput) -> EngineResult:

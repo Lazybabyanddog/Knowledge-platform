@@ -10,7 +10,8 @@ requires-python = ">=3.11,<3.13"
 
 dependencies = [
     "fastapi>=0.110",
-    "uvicorn[standard]>=0.27",
+    # >=0.29 才有 --timeout-graceful-shutdown：切流后要给存量 SSE 留收尾时间
+    "uvicorn[standard]>=0.29",
     "sqlalchemy>=2.0.25",
     "alembic>=1.13",
     "psycopg[binary]>=3.1",
@@ -29,6 +30,8 @@ dependencies = [
     "pgvector>=0.2",
     "beautifulsoup4>=4.12",
     "lxml>=5.0",
+    # 解析引擎直接导入它，之前只靠 conda 环境里恰好装了，容器化后必须显式声明
+    "pypdf>=4.0",
 ]
 
 [project.optional-dependencies]

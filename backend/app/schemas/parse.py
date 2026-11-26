@@ -9,9 +9,33 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.domain.enums import BlockType, ParseTaskStatus
 from app.schemas.task import TaskActions, TaskErrorInfo
+from app.services.chunk_config import ChunkConfigError, parse_chunk_config
+from app.services.glossary.config import AliasConfigError, parse_alias_config
 
 DocType = Literal["pdf", "office", "image", "text", "html"]
 MAX_CONFIG_KEYS = 30
+
+
+def _check_chunk_config(value: dict[str, Any]) -> dict[str, Any]:
+    """请求阶段就拦住非法的切块配置，避免存下来等 worker 执行时才失败。"""
+    try:
+        parse_chunk_config(value)
+    except ChunkConfigError as exc:
+        raise ValueError(str(exc)) from exc
+    return value
+
+
+def _check_alias_config(value: dict[str, Any]) -> dict[str, Any]:
+    """别名规则的错误必须落在保存这一刻：索引阶段才炸会让整版文档不可检索。"""
+    try:
+        parse_alias_config(value)
+    except AliasConfigError as exc:
+        raise ValueError(str(exc)) from exc
+    return value
+
+
+def _check_config(value: dict[str, Any]) -> dict[str, Any]:
+    return _check_alias_config(_check_chunk_config(value))
 
 
 class ParseStrategyCreateRequest(BaseModel):
@@ -26,7 +50,7 @@ class ParseStrategyCreateRequest(BaseModel):
     def _limit_config(cls, value: dict[str, Any]) -> dict[str, Any]:
         if len(value) > MAX_CONFIG_KEYS:
             raise ValueError(f"配置项不得超过 {MAX_CONFIG_KEYS} 个")
-        return value
+        return _check_config(value)
 
 
 class ParseStrategyUpdateRequest(BaseModel):
@@ -42,7 +66,7 @@ class ParseStrategyUpdateRequest(BaseModel):
     def _limit_config(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
         if value is not None and len(value) > MAX_CONFIG_KEYS:
             raise ValueError(f"配置项不得超过 {MAX_CONFIG_KEYS} 个")
-        return value
+        return None if value is None else _check_config(value)
 
 
 class ParseStrategyItem(BaseModel):
@@ -53,6 +77,10 @@ class ParseStrategyItem(BaseModel):
     doc_type: str
     engine: str
     config: dict[str, Any]
+    # 解析后的生效切块配置（缺省值已补齐），前端直接展示与回显
+    chunk: dict[str, Any] = Field(default_factory=dict)
+    # 解析后的生效别名配置（缺省值已补齐）；历史脏配置返回空对象
+    alias: dict[str, Any] = Field(default_factory=dict)
     is_default: bool
     status: str
     created_at: datetime
@@ -60,6 +88,18 @@ class ParseStrategyItem(BaseModel):
 
 class ParseStrategyListResponse(BaseModel):
     items: list[ParseStrategyItem]
+
+
+class ParseEngineItem(BaseModel):
+    """可被策略引用的引擎；前端据此生成候选，不再内置列表。"""
+
+    name: str
+    display_name: str
+    doc_types: list[str]
+
+
+class ParseEngineListResponse(BaseModel):
+    items: list[ParseEngineItem]
 
 
 class ParseTaskCreateRequest(BaseModel):
@@ -120,6 +160,8 @@ class ParseTaskDetail(ParseTaskItem):
     warnings: list[str] = Field(default_factory=list)
     attempts: list[ParseAttemptItem] = Field(default_factory=list)
     actions: TaskActions = Field(default_factory=TaskActions)
+    # 该次索引构建产出的别名词典（截断视图）；未启用或未构建时为空对象
+    glossary: dict[str, Any] = Field(default_factory=dict)
 
 
 class ParseTaskListResponse(BaseModel):

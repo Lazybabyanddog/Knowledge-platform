@@ -21,6 +21,7 @@ from app.infra.db.models.document import Document, DocumentVersion
 from app.infra.db.models.retrieval import DocumentChunk
 from app.infra.llm import provider
 from app.services.audit_service import AuditService
+from app.services.glossary.inject import GlossaryLine, attach_glossary, render_glossary
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,9 @@ class ChunkHit:
     first_page_no: int | None
     last_page_no: int | None
     block_ids: list[str]
+    parse_task_id: str | None = None
+    # 文档级别名词典里"本片段实际出现"的那几条，只用于拼 prompt，不进引用
+    glossary: tuple[GlossaryLine, ...] = ()
 
 
 class RetrievalService:
@@ -89,7 +93,7 @@ class RetrievalService:
         self._tune_hnsw()
         stmt = self._base_stmt(principal, vector, doc_type=doc_type, limit=limit)
         hits = [self._to_hit(row) for row in self.db.execute(stmt).all()][:limit]
-        return hits, list(vector)
+        return attach_glossary(self.db, hits), list(vector)
 
     def search_many(
         self,
@@ -126,7 +130,8 @@ class RetrievalService:
         result: dict[str, list[ChunkHit]] = {}
         for text, vector in zip(ordered, vectors, strict=True):
             stmt = self._base_stmt(principal, vector, doc_type=doc_type, limit=limit)
-            result[text] = [self._to_hit(row) for row in self.db.execute(stmt).all()][:limit]
+            hits = [self._to_hit(row) for row in self.db.execute(stmt).all()][:limit]
+            result[text] = attach_glossary(self.db, hits)
         return result
 
     def _base_stmt(
@@ -178,6 +183,7 @@ class RetrievalService:
             first_page_no=chunk.first_page_no,
             last_page_no=chunk.last_page_no,
             block_ids=list(chunk.block_ids or []),
+            parse_task_id=str(chunk.parse_task_id) if chunk.parse_task_id else None,
         )
 
     def _tune_hnsw(self) -> None:
@@ -215,11 +221,18 @@ _SYSTEM_PROMPT = (
 
 
 def build_ask_messages(question: str, hits: list[ChunkHit]) -> list[dict[str, str]]:
-    """把召回片段拼成上下文；编号与 SSE 的 sources 顺序一致。"""
-    context = "\n\n".join(
-        f"[{index}] 《{hit.title}》第 {hit.first_page_no or '-'} 页\n{hit.content}"
-        for index, hit in enumerate(hits, start=1)
-    )
+    """把召回片段拼成上下文；编号与 SSE 的 sources 顺序一致。
+
+    片段里有别名对照时插一行在正文之前：不改正文、不改编号，因此引用仍逐字回溯原文。
+    没有对照（未启用、词典为空、片段不含别名）时输出与未引入该能力时逐字一致。
+    """
+    blocks: list[str] = []
+    for index, hit in enumerate(hits, start=1):
+        header = f"[{index}] 《{hit.title}》第 {hit.first_page_no or '-'} 页"
+        line = render_glossary(hit)
+        body = f"{header}\n{line}\n{hit.content}" if line else f"{header}\n{hit.content}"
+        blocks.append(body)
+    context = "\n\n".join(blocks)
     user = (
         f"【资料】\n{context}\n\n【问题】\n{question}\n\n"
         "请用中文回答，并在引用处标注 [编号]；资料没有覆盖的部分请明确说明。"

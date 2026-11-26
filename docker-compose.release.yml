@@ -1,0 +1,229 @@
+# 发布层，与 docker-compose.yml 叠加使用（中间件仍由主文件提供）：
+#   docker compose -f docker-compose.yml -f docker-compose.release.yml --profile blue up -d
+# 两色可同时运行；只有 gateway 的 active.conf 决定谁在接流量。
+#
+# 端口约定：
+#   8080  外部唯一入口
+#   8000  蓝色 API（仅绑 127.0.0.1，供脚本探针/调试）
+#   8001  绿色 API（同上）
+
+x-app-env: &app-env
+  # 容器内一律走服务名与容器端口，不能沿用 .env 里的 localhost
+  DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-ai_platform}:${POSTGRES_PASSWORD:-ai_platform}@postgres:5432/${POSTGRES_DB:-ai_platform}
+  REDIS_URL: redis://redis:6379/0
+  CELERY_BROKER_URL: redis://redis:6379/1
+  CELERY_RESULT_BACKEND: redis://redis:6379/2
+  NEO4J_URI: bolt://neo4j:7687
+  # silo 在容器内监听 9000，宿主的 9100 只是映射
+  MINIO_ENDPOINT: silo:9000
+  # 前端由 gateway 同源提供，跨域默认只留入口地址
+  CORS_ORIGINS: ${RELEASE_CORS_ORIGINS:-http://localhost:8080}
+
+x-app-common: &app-common
+  image: kp-backend:${RELEASE_VERSION:-dev}
+  env_file:
+    - .env
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    silo:
+      condition: service_healthy
+    neo4j:
+      condition: service_healthy
+
+services:
+  gateway:
+    image: nginx:1.27-alpine
+    container_name: aip-gateway
+    restart: unless-stopped
+    ports:
+      - "${GATEWAY_PORT:-8080}:80"
+    volumes:
+      - ./deploy/gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+      # 挂目录而非单文件：脚本 rename 替换 active.conf，单文件挂载看不到新 inode
+      - ./deploy/gateway/conf.d:/etc/nginx/conf.d:ro
+      - ./deploy/releases:/srv/www:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1/nginx-health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+  api-blue:
+    <<: *app-common
+    profiles: ["blue"]
+    container_name: aip-api-blue
+    command:
+      - uvicorn
+      - app.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      # 收到 SIGTERM 后等存量请求（含 SSE）走完再退出
+      - --timeout-graceful-shutdown
+      - "30"
+    ports:
+      - "127.0.0.1:${BLUE_API_PORT:-8000}:8000"
+    stop_grace_period: 45s
+    environment:
+      <<: *app-env
+      RELEASE_COLOR: blue
+      RELEASE_VERSION: ${RELEASE_VERSION:-dev}
+    healthcheck: &api-healthcheck
+      test:
+        - CMD
+        - python
+        - -c
+        - "import sys,urllib.request;sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz',timeout=3).status==200 else 1)"
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
+
+  api-green:
+    <<: *app-common
+    profiles: ["green"]
+    container_name: aip-api-green
+    command:
+      - uvicorn
+      - app.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --timeout-graceful-shutdown
+      - "30"
+    ports:
+      - "127.0.0.1:${GREEN_API_PORT:-8001}:8000"
+    stop_grace_period: 45s
+    environment:
+      <<: *app-env
+      RELEASE_COLOR: green
+      RELEASE_VERSION: ${RELEASE_VERSION:-dev}
+    healthcheck:
+      <<: *api-healthcheck
+
+  worker-blue:
+    <<: *app-common
+    profiles: ["blue"]
+    container_name: aip-worker-blue
+    command:
+      - celery
+      - -A
+      - app.workers.celery_app:celery_app
+      - worker
+      - -Q
+      - parse
+      - -l
+      - info
+      - --pool=solo
+      - --hostname=worker-blue@%h
+    # 长任务可能跑几十分钟：宽限要大于"当前任务剩余时间"，超时后由看护流程接管
+    stop_grace_period: ${WORKER_DRAIN_GRACE:-900}s
+    environment:
+      <<: *app-env
+      RELEASE_COLOR: blue
+      RELEASE_VERSION: ${RELEASE_VERSION:-dev}
+
+  worker-green:
+    <<: *app-common
+    profiles: ["green"]
+    container_name: aip-worker-green
+    command:
+      - celery
+      - -A
+      - app.workers.celery_app:celery_app
+      - worker
+      - -Q
+      - parse
+      - -l
+      - info
+      - --pool=solo
+      - --hostname=worker-green@%h
+    stop_grace_period: ${WORKER_DRAIN_GRACE:-900}s
+    environment:
+      <<: *app-env
+      RELEASE_COLOR: green
+      RELEASE_VERSION: ${RELEASE_VERSION:-dev}
+
+  # MinerU 解析可能占用分钟级且独显：单独队列 + solo，避免堵住 parse 队列里的索引与看护
+  worker-mineru-blue:
+    <<: *app-common
+    profiles: ["blue"]
+    container_name: aip-worker-mineru-blue
+    command:
+      - celery
+      - -A
+      - app.workers.celery_app:celery_app
+      - worker
+      - -Q
+      - parse.mineru
+      - -l
+      - info
+      - --pool=solo
+      - --hostname=worker-mineru-blue@%h
+    stop_grace_period: ${WORKER_DRAIN_GRACE:-900}s
+    environment:
+      <<: *app-env
+      RELEASE_COLOR: blue
+      RELEASE_VERSION: ${RELEASE_VERSION:-dev}
+
+  worker-mineru-green:
+    <<: *app-common
+    profiles: ["green"]
+    container_name: aip-worker-mineru-green
+    command:
+      - celery
+      - -A
+      - app.workers.celery_app:celery_app
+      - worker
+      - -Q
+      - parse.mineru
+      - -l
+      - info
+      - --pool=solo
+      - --hostname=worker-mineru-green@%h
+    stop_grace_period: ${WORKER_DRAIN_GRACE:-900}s
+    environment:
+      <<: *app-env
+      RELEASE_COLOR: green
+      RELEASE_VERSION: ${RELEASE_VERSION:-dev}
+
+  beat-blue:
+    <<: *app-common
+    profiles: ["blue"]
+    container_name: aip-beat-blue
+    # 抢不到 Redis 锁就退出，无限重启没有意义
+    restart: on-failure
+    command: ["python", "-m", "app.workers.beat_launcher"]
+    environment:
+      <<: *app-env
+      RELEASE_COLOR: blue
+      RELEASE_VERSION: ${RELEASE_VERSION:-dev}
+
+  beat-green:
+    <<: *app-common
+    profiles: ["green"]
+    container_name: aip-beat-green
+    restart: on-failure
+    command: ["python", "-m", "app.workers.beat_launcher"]
+    environment:
+      <<: *app-env
+      RELEASE_COLOR: green
+      RELEASE_VERSION: ${RELEASE_VERSION:-dev}
+
+  # 一次性迁移容器：release.ps1 用 run --rm 调用，保证迁移代码与运行代码同镜像
+  migrate:
+    <<: *app-common
+    profiles: ["tools"]
+    container_name: aip-migrate
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      <<: *app-env
+      RELEASE_VERSION: ${RELEASE_VERSION:-dev}

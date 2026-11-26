@@ -22,6 +22,7 @@ class TaskErrorCode(StrEnum):
     LLM_UNAVAILABLE = "llm_unavailable"
     LLM_REJECTED = "llm_rejected"
     NEO4J_UNAVAILABLE = "neo4j_unavailable"
+    MINERU_UNAVAILABLE = "mineru_unavailable"
     PARSE_ERROR = "parse_error"
     BAD_INPUT = "bad_input"
     ONTOLOGY_MISSING = "ontology_missing"
@@ -69,6 +70,12 @@ _CATALOG: dict[str, ErrorSpec] = {
         code=TaskErrorCode.NEO4J_UNAVAILABLE.value,
         message="图库写入失败",
         hint="检查图库连接后继续执行，已完成的批次不会重跑",
+        retryable=True,
+    ),
+    TaskErrorCode.MINERU_UNAVAILABLE.value: ErrorSpec(
+        code=TaskErrorCode.MINERU_UNAVAILABLE.value,
+        message="版面解析服务不可用",
+        hint="检查 MinerU 服务是否启动、服务地址与超时配置是否正确，然后继续执行",
         retryable=True,
     ),
     TaskErrorCode.PARSE_ERROR.value: ErrorSpec(

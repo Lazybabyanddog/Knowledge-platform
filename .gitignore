@@ -38,3 +38,9 @@ uploads/
 
 # 本地数据库文档（建库建表脚本不入库）
 docs/db/
+
+# 发布运行态：当前颜色/版本与发布历史由脚本在宿主写入，属于环境数据
+deploy/state/*
+!deploy/state/.gitkeep
+# 前端构建产物按版本堆积，由构建脚本生成
+deploy/releases/

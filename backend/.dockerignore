@@ -1,0 +1,14 @@
+# 构建上下文是 backend/；把测试、缓存与凭据挡在镜像之外
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+tests/
+tools/
+.env
+.env.*
+.venv/
+venv/
+*.log

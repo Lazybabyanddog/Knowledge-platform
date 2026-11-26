@@ -90,6 +90,14 @@ class Settings(BaseSettings):
     parse_block_page_size_max: int = 200
     parse_block_retention_days: int = 90
 
+    # ---- MinerU 版面解析（本机服务形态，见 design.md D1）----
+    # 留空表示未部署：策略里选 mineru 会被直接拒绝，而不是等到 worker 里才失败
+    mineru_base_url: str = ""
+    # 单次调用超时，必须显著小于 parse_soft_time_limit_seconds，否则软超时会先打断任务
+    mineru_timeout_seconds: int = 300
+    mineru_lang: str = "ch"
+    mineru_backend: str = "pipeline"
+
     # ---- 抽取 ----
     extract_max_repair_attempts: int = 2
     extract_batch_size: int = 8
@@ -181,6 +189,15 @@ class Settings(BaseSettings):
     # 判定"召回足够"所需的最少证据片段数
     query_rewrite_min_evidence: int = 2
     query_rewrite_rrf_k: int = 60
+
+    # ---- 发布 ----
+    # 由发布脚本注入，只用于探针、日志与发布记录，不参与任何业务判定
+    release_version: str = "dev"
+    release_color: Literal["blue", "green", "none"] = "none"
+    # worker 排空宽限：切流后等当前任务结束的上限，超时由看护流程接管
+    worker_drain_grace_seconds: int = 900
+    # beat 单实例锁的 TTL：必须大于续租间隔，避免锁在持有者存活时过期
+    beat_lock_ttl_seconds: int = 30
 
     # ---- 种子数据 ----
     seed_workspace_name: str = "默认空间"

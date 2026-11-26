@@ -55,6 +55,7 @@ from app.schemas.parse import (
 )
 from app.schemas.task import TaskActions, TaskErrorInfo
 from app.services.audit_service import AuditService
+from app.services.glossary.snapshot import glossary_view
 from app.services.index_service import reset_version_index
 from app.services.parse_strategy_service import ParseStrategyService
 from app.services.task_recovery import (
@@ -76,16 +77,39 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
+def _queue_of(task_id: str) -> str:
+    """按任务的有效引擎选队列；查不到就回默认队列，不让投递因查询失败而中断。"""
+    from app.infra.db.session import SessionLocal
+    from app.workers.queues import PARSE_QUEUE, resolve_parse_queue
+
+    session = SessionLocal()
+    try:
+        return resolve_parse_queue(session, task_id)
+    except Exception:  # noqa: BLE001 - 队列选择只是优化，失败也要把任务投出去
+        logger.exception("解析任务队列选择失败，回落默认队列 task_id=%s", task_id)
+        return PARSE_QUEUE
+    finally:
+        session.close()
+
+
 def _default_dispatch(task_id: str) -> None:
     from app.workers.tasks import run_parse_task  # 延迟导入，避免 service <-> worker 循环
 
-    run_parse_task.delay(task_id)
+    run_parse_task.apply_async(args=[task_id], queue=_queue_of(task_id))
 
 
 def _default_dispatch_delayed(task_id: str, countdown: int) -> None:
     from app.workers.tasks import run_parse_task
 
-    run_parse_task.apply_async(args=[task_id], countdown=countdown)
+    run_parse_task.apply_async(args=[task_id], countdown=countdown, queue=_queue_of(task_id))
+
+
+def dispatch_parse_task(task_id: str, countdown: int = 0) -> None:
+    """统一投递入口：看护重投、人工重试、新任务都从这里走，队列规则只有一份。"""
+    if countdown > 0:
+        _default_dispatch_delayed(task_id, countdown)
+    else:
+        _default_dispatch(task_id)
 
 
 _dispatcher: Callable[[str], None] = _default_dispatch
@@ -391,6 +415,7 @@ class ParseTaskService:
                 for row in reversed(self.tasks.list_attempts(task.id))
             ],
             actions=_actions(task),
+            glossary=glossary_view(task.stats),
         )
 
     def list_blocks(

@@ -57,9 +57,10 @@ def _release_lock(key: str) -> None:
 
 
 def _dispatch_parse(task_id: str) -> None:
-    from app.workers.tasks import run_parse_task  # 延迟导入，避免循环
+    # 复用统一入口，MinerU 任务重投后仍回到 parse.mineru，而不是默认队列
+    from app.services.parse_task_service import dispatch_parse_task
 
-    run_parse_task.delay(task_id)
+    dispatch_parse_task(task_id)
 
 
 def _dispatch_extraction(task_id: str) -> None:

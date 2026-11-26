@@ -21,7 +21,11 @@ from app.infra.db.models.parse_strategy import ParseStrategy
 from app.infra.db.models.parse_task import ParseBlock, ParseTask
 from app.infra.db.models.retrieval import DocumentChunk
 from app.infra.llm import provider
-from app.services.chunking import DEFAULT_CHUNK_HINT, ChunkDraft, build_chunks
+from app.services.chunk_config import ChunkConfig, ChunkConfigError, parse_chunk_config
+from app.services.chunking import ChunkDraft, build_chunks
+from app.services.glossary.config import AliasConfig, AliasConfigError, parse_alias_config
+from app.services.glossary.pipeline import build_glossary
+from app.services.glossary.snapshot import degraded
 
 logger = logging.getLogger(__name__)
 
@@ -131,13 +135,51 @@ def _resolve_parse_task(session: Session, version: DocumentVersion) -> ParseTask
     ).first()
 
 
-def _chunk_hint_for(session: Session, task: ParseTask) -> int:
+def _chunk_config_for(session: Session, task: ParseTask) -> ChunkConfig:
+    """按该次解析任务关联的策略版本决定切块方式。
+
+    片段通过 ``parse_task_id -> strategy_id`` 可追溯到配置，片段本身不存策略字段。
+    策略缺失或历史数据非法时回退到默认 ``block_merge``，保证索引仍能构建。
+    """
     strategy = session.get(ParseStrategy, task.strategy_id)
-    if strategy is None:
-        return DEFAULT_CHUNK_HINT
-    config = strategy.config or {}
-    hint = config.get("chunk_hint")
-    return hint if isinstance(hint, int) and hint > 0 else DEFAULT_CHUNK_HINT
+    try:
+        return parse_chunk_config(strategy.config if strategy is not None else None)
+    except ChunkConfigError:
+        logger.warning("解析策略切块配置非法，回退默认策略 strategy=%s", task.strategy_id)
+        return ChunkConfig()
+
+
+def _alias_config_for(session: Session, task: ParseTask) -> tuple[AliasConfig, str | None]:
+    """按解析任务关联的策略版本取别名配置；非法配置不抛错，返回原因供降级记录。"""
+    strategy = session.get(ParseStrategy, task.strategy_id)
+    try:
+        return parse_alias_config(strategy.config if strategy is not None else None), None
+    except AliasConfigError as exc:
+        logger.warning("解析策略别名配置非法，跳过词典构建 strategy=%s", task.strategy_id)
+        return AliasConfig(enabled=False), str(exc)
+
+
+def _apply_glossary(session: Session, task: ParseTask, blocks: list[ParseBlock]) -> None:
+    """产出本文档的别名词典并写进解析任务统计。
+
+    词典只服务生成阶段，是纯派生物：任何失败都降级为"没有词典"，绝不让索引失败。
+    """
+    stats = dict(task.stats or {})
+    config, config_error = _alias_config_for(session, task)
+    if config_error is not None:
+        stats["glossary"] = degraded(f"别名配置非法: {config_error}")
+    elif not config.enabled:
+        # 关闭即回到上线前：连键都不留，避免旧词典继续被注入
+        stats.pop("glossary", None)
+    else:
+        try:
+            stats["glossary"] = build_glossary(blocks, config)
+        except Exception as exc:  # noqa: BLE001 - 派生物失败不阻塞索引
+            logger.warning("别名抽取失败 task=%s", task.id, exc_info=True)
+            stats["glossary"] = degraded(f"{type(exc).__name__}: {exc}")
+    # JSONB 必须整体重新赋值，原地修改不会被识别为变更
+    task.stats = stats
+    session.flush()
 
 
 def build_version_index(session: Session, version_id: uuid.UUID) -> DocumentVersion:
@@ -171,7 +213,7 @@ def build_version_index(session: Session, version_id: uuid.UUID) -> DocumentVers
             .order_by(ParseBlock.seq)
         )
     )
-    drafts = build_chunks(blocks, chunk_hint=_chunk_hint_for(session, task))
+    drafts = build_chunks(blocks, _chunk_config_for(session, task))
 
     if not drafts:
         version.index_status = IndexStatus.SKIPPED.value
@@ -180,6 +222,8 @@ def build_version_index(session: Session, version_id: uuid.UUID) -> DocumentVers
         version.chunk_count = 0
         session.flush()
         return version
+
+    _apply_glossary(session, task, blocks)
 
     if not provider.is_embedding_configured():
         # 不阻塞发布：标记 skipped 并保留原因，配置好后可重建

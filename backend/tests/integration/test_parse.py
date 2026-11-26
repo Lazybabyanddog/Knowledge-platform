@@ -838,3 +838,298 @@ def test_html_document_parse_produces_structured_blocks(
     assert any(item["block_type"] == "table" for item in blocks["items"])
     assert not any("<" in item["content"] for item in blocks["items"])
     assert not any("版权所有" in item["content"] for item in blocks["items"])
+
+def test_engines_endpoint_lists_registered_engines(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    response = client.get(f"{STRATEGIES}/engines", headers=auth_headers)
+    assert response.status_code == 200
+
+    items = {item["name"]: item for item in response.json()["data"]["items"]}
+    assert {"pdf_layout", "office", "ocr", "plain_text", "html_dom", "mineru"} <= set(items)
+    assert "pdf" in items["mineru"]["doc_types"]
+    assert items["mineru"]["display_name"]
+
+def test_strategy_engine_must_support_doc_type(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    rejected = client.post(
+        STRATEGIES,
+        headers=auth_headers,
+        json={
+            "name": "错配引擎",
+            "doc_type": "office",
+            "engine": "pdf_layout",
+            "config": {},
+            "is_default": False,
+        },
+    )
+    assert rejected.status_code == 400
+    assert "不支持文档类型" in rejected.json()["message"]
+
+
+def test_mineru_strategy_requires_configured_service(
+    client: TestClient, auth_headers: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "mineru_base_url", "")
+
+    rejected = client.post(
+        STRATEGIES,
+        headers=auth_headers,
+        json={
+            "name": "MinerU 未配置",
+            "doc_type": "pdf",
+            "engine": "mineru",
+            "config": {},
+            "is_default": False,
+        },
+    )
+    assert rejected.status_code == 400
+    assert "MINERU_BASE_URL" in rejected.json()["message"]
+
+
+@pytest.mark.parametrize(
+    ("chunk", "hint"),
+    [
+        ({"strategy": "semantic"}, "semantic"),
+        ({"strategy": "block_merge", "overlap": 100}, "fixed_window"),
+        ({"strategy": "fixed_window", "size": 20}, "chunk.size"),
+    ],
+)
+def test_strategy_rejects_invalid_chunk_config(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    chunk: dict[str, Any],
+    hint: str,
+) -> None:
+    name = f"非法切块-{uuid.uuid4().hex[:6]}"
+    rejected = client.post(
+        STRATEGIES,
+        headers=auth_headers,
+        json={
+            "name": name,
+            "doc_type": "text",
+            "engine": "plain_text",
+            "config": {"chunk": chunk},
+            "is_default": False,
+        },
+    )
+    assert rejected.status_code == 400
+    assert hint in rejected.json()["message"]
+
+    listed = client.get(
+        STRATEGIES, headers=auth_headers, params={"doc_type": "text"}
+    ).json()["data"]["items"]
+    assert name not in {item["name"] for item in listed}
+
+
+def test_strategy_chunk_config_saved_and_patch_validated(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    parse_cleanup: dict[str, list[str]],
+) -> None:
+    strategy = _create_strategy(
+        client,
+        auth_headers,
+        parse_cleanup,
+        name="重叠窗口",
+        config={"chunk": {"strategy": "fixed_window", "size": 600, "overlap": 80}},
+    )
+    assert strategy["chunk"] == {"strategy": "fixed_window", "size": 600, "overlap": 80}
+    assert strategy["config"]["chunk"]["overlap"] == 80
+
+    rejected = client.patch(
+        f"{STRATEGIES}/{strategy['id']}",
+        headers=auth_headers,
+        json={"config": {"chunk": {"strategy": "fixed_window", "size": 600, "overlap": 400}}},
+    )
+    assert rejected.status_code == 400
+    assert "chunk.overlap" in rejected.json()["message"]
+
+    unchanged = {
+        item["id"]: item
+        for item in client.get(
+            STRATEGIES, headers=auth_headers, params={"doc_type": "text"}
+        ).json()["data"]["items"]
+    }[strategy["id"]]
+    assert unchanged["version"] == 1
+
+    # 存量策略只有 chunk_hint 时，返回的生效配置按 block_merge 展示
+    legacy = _create_strategy(
+        client,
+        auth_headers,
+        parse_cleanup,
+        name="历史长度",
+        config={"chunk_hint": 600},
+    )
+    assert legacy["chunk"] == {"strategy": "block_merge", "size": 600, "overlap": 0}
+
+
+def test_strategy_detail_exposes_chunk_config(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    parse_cleanup: dict[str, list[str]],
+) -> None:
+    created = _create_strategy(
+        client,
+        auth_headers,
+        parse_cleanup,
+        name="详情切块",
+        config={"chunk": {"strategy": "heading_section", "size": 1200}},
+    )
+
+    detail = client.get(f"{STRATEGIES}/{created['id']}", headers=auth_headers)
+    assert detail.status_code == 200, detail.text
+    data = detail.json()["data"]
+    assert data["chunk"] == {"strategy": "heading_section", "size": 1200, "overlap": 0}
+    assert (data["version"], data["engine"]) == (1, "plain_text")
+
+    missing = client.get(f"{STRATEGIES}/{uuid.uuid4()}", headers=auth_headers)
+    assert missing.status_code == 404
+
+
+ALIAS_RULE: dict[str, Any] = {
+    "name": "自定义简称",
+    "kind": "ALIAS",
+    "triggers": ["以下简称"],
+    "shapes": {"suffixes": ["公司"], "stop_words": ["，"]},
+    "target_cardinality": "ONE",
+    "priority": 70,
+}
+
+
+@pytest.mark.parametrize(
+    ("alias", "hint"),
+    [
+        ("not-an-object", "alias 必须是对象"),
+        ({"rules": [{"name": "缺形态", "triggers": ["简称"]}]}, "shapes"),
+        (
+            {
+                "rules": [
+                    {
+                        "name": "坏类型",
+                        "kind": "BAD",
+                        "triggers": ["简称"],
+                        "shapes": {"suffixes": ["公司"]},
+                    }
+                ]
+            },
+            "kind",
+        ),
+        (
+            {
+                "rules": [
+                    {
+                        "name": "坏基数",
+                        "triggers": ["简称"],
+                        "shapes": {"suffixes": ["公司"]},
+                        "target_cardinality": "ZERO",
+                    }
+                ]
+            },
+            "target_cardinality",
+        ),
+    ],
+)
+def test_strategy_rejects_invalid_alias_config(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    alias: Any,
+    hint: str,
+) -> None:
+    name = f"非法别名-{uuid.uuid4().hex[:6]}"
+    rejected = client.post(
+        STRATEGIES,
+        headers=auth_headers,
+        json={
+            "name": name,
+            "doc_type": "text",
+            "engine": "plain_text",
+            "config": {"alias": alias},
+            "is_default": False,
+        },
+    )
+    assert rejected.status_code == 400
+    assert hint in rejected.json()["message"]
+
+    # 校验失败不应产生新版本（连策略都不该落库）
+    listed = client.get(
+        STRATEGIES, headers=auth_headers, params={"doc_type": "text"}
+    ).json()["data"]["items"]
+    assert name not in {item["name"] for item in listed}
+
+
+def test_strategy_alias_config_saved_and_patch_validated(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    parse_cleanup: dict[str, list[str]],
+) -> None:
+    config = {"alias": {"enabled": True, "use_builtin": False, "rules": [ALIAS_RULE]}}
+    strategy = _create_strategy(
+        client, auth_headers, parse_cleanup, name="别名策略", config=config
+    )
+    # 生效视图补齐缺省值，原始配置保持请求时的样子（两者分离）
+    assert strategy["alias"]["enabled"] is True
+    assert strategy["alias"]["use_builtin"] is False
+    assert strategy["alias"]["rules"][0]["name"] == "自定义简称"
+    assert strategy["alias"]["rules"][0]["priority"] == 70
+    assert strategy["config"]["alias"] == {
+        "enabled": True,
+        "use_builtin": False,
+        "rules": [ALIAS_RULE],
+    }
+
+    rejected = client.patch(
+        f"{STRATEGIES}/{strategy['id']}",
+        headers=auth_headers,
+        json={
+            "config": {
+                "alias": {"rules": [{"name": "缺触发器", "shapes": {"suffixes": ["公司"]}}]}
+            }
+        },
+    )
+    assert rejected.status_code == 400
+    assert "triggers" in rejected.json()["message"]
+
+    unchanged = client.get(f"{STRATEGIES}/{strategy['id']}", headers=auth_headers)
+    assert unchanged.status_code == 200
+    assert unchanged.json()["data"]["version"] == 1
+
+    closed = client.patch(
+        f"{STRATEGIES}/{strategy['id']}",
+        headers=auth_headers,
+        json={"config": {"alias": {"enabled": False, "use_builtin": False, "rules": [ALIAS_RULE]}}},
+    )
+    assert closed.status_code == 200, closed.text
+    assert closed.json()["data"]["version"] == 2
+    assert closed.json()["data"]["alias"]["enabled"] is False
+
+
+def test_strategy_detail_survives_dirty_alias_config(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    parse_cleanup: dict[str, list[str]],
+) -> None:
+    created = _create_strategy(
+        client,
+        auth_headers,
+        parse_cleanup,
+        name="脏别名配置",
+        config={"chunk": {"strategy": "block_merge", "size": 400}},
+    )
+
+    session = SessionLocal()
+    try:
+        row = session.get(ParseStrategy, uuid.UUID(created["id"]))
+        assert row is not None
+        row.config = {"alias": "dirty", "chunk": {"strategy": "block_merge", "size": 400}}
+        session.commit()
+    finally:
+        session.close()
+
+    detail = client.get(f"{STRATEGIES}/{created['id']}", headers=auth_headers)
+    assert detail.status_code == 200, detail.text
+    data = detail.json()["data"]
+    # 脏配置只让别名视图退化为空对象，其它字段照常回显
+    assert data["alias"] == {}
+    assert data["chunk"]["size"] == 400

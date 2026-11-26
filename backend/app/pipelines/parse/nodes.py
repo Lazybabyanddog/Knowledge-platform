@@ -8,7 +8,7 @@ from typing import Any
 from app.domain.enums import BlockType
 from app.parsing.base import ParsedBlock, ParseInput
 from app.parsing.quality import score_quality
-from app.parsing.registry import get_engine, has_engine
+from app.parsing.routing import resolve_effective_engine
 from app.parsing.text_blocks import detect_doc_type
 
 _EMPTY_CELL = re.compile(r"\s*\|\s*")
@@ -30,13 +30,7 @@ def make_engine_node(fallback: str):
 
     def _node(state: dict[str, Any]) -> dict[str, Any]:
         doc_type = state.get("doc_type", "text")
-        requested = state.get("engine") or ""
-        if requested and has_engine(requested):
-            engine = get_engine(requested)
-        else:
-            engine = get_engine(fallback)
-        if not engine.supports(doc_type):
-            engine = get_engine(fallback)
+        engine = resolve_effective_engine(doc_type, state.get("engine"), fallback)
 
         result = engine.parse(
             ParseInput(

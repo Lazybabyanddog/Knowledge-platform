@@ -21,6 +21,12 @@ backend/
     schemas/          Pydantic 请求/响应模型
   alembic/            迁移脚本
   tests/              unit + integration
+  Dockerfile          单镜像四角色（api / worker / beat / migrate）
+deploy/
+  gateway/            nginx 网关与 active.conf（当前颜色 + 前端目录）
+  releases/<version>/ 前端构建产物，按版本只增不改
+  state/              current.json / releases.jsonl / drain.log
+scripts/              release.ps1、rollback.ps1、build-frontend.ps1、check_migrations.py
 ```
 
 ## 本地运行
@@ -45,6 +51,56 @@ npm run dev                          # Web: http://localhost:5173（/api 代理�
 ```
 
 种子管理员：`admin / Admin@12345`，可用 `.env` 的 `SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD` 覆盖。知识抽取需在 `.env` 填写 `LLM_API_KEY`（可选 `LLM_BASE_URL`）；未配置时解析可正常执行，抽取任务会失败。
+
+## 部署与发布（蓝绿 / 单色）
+
+容器发布与上面的 conda 本地开发是两条互斥路径：共用同一套中间件时，宿主的 uvicorn / celery 会和容器 worker 抢同一个队列，只能跑一边。
+
+```powershell
+copy .env.example .env                              # 填 SEED_ADMIN_PASSWORD 等
+docker compose up -d                                # PostgreSQL / Redis / Neo4j / MinIO
+docker compose -f docker-compose.yml -f docker-compose.release.yml up -d gateway
+pwsh -File scripts\release.ps1 -Version v20261125-1            # 默认蓝绿：起新色 → 验证 → 切流 → 排空
+pwsh -File scripts\release.ps1 -Version v20261126-1 -Mode inplace  # 只保一色：停旧起新，失败按旧镜像回退
+pwsh -File scripts\rollback.ps1 -Reason "结果异常"    # 回流量到上一版（单色模式按镜像 tag 重建）
+```
+
+- **发布模式是开关**：`-Mode bluegreen|inplace`，缺省读 `.env` 的 `RELEASE_MODE`（未配置即蓝绿）。
+- **入口只有网关**：`http://<host>:8080`，`/` 是前端、`/api` 反代到当前颜色；两色 API 只绑 `127.0.0.1:8000/8001`。
+- **单镜像四角色**：`kp-backend:<version>` 一份镜像，靠启动命令区分 api / worker / beat / migrate。
+- **切换不重启**：`deploy/gateway/conf.d/active.conf` 一次替换同时改上游与前端目录，`nginx -s reload` 生效。
+- **迁移只允许 expand**：`scripts/check_migrations.py` 拦截 drop / rename / 收紧可空；含 contract 的版本不能回滚。
+- **蓝绿失败不伤线上**：新色 `/readyz` 或冒烟不过就清理新色、保留当前流量；已切流则提示执行 `rollback.ps1`。
+- **单色有停机窗口**：原地重建期间服务不可用，失败时自动用上一版本镜像重建回去（首版无旧镜像可退）。
+- **排空而非硬停**：蓝绿切流后旧 worker 在后台按 `WORKER_DRAIN_GRACE`（默认 900s）等当前任务跑完。
+- **状态可查**：`deploy/state/current.json`（当前版本/颜色/模式/上一版）与 `releases.jsonl`（含失败阶段）。
+
+细节（端口、目录布局、迁移纪律、beat 单实例、版本目录保留策略、失败处理）见 [`deploy/README.md`](deploy/README.md)。
+
+## MinerU 版面解析（可选）
+
+MinerU 用于扫描件、双栏、公式与复杂表格的 PDF 版面解析。平台以**本机独立服务**形态接入：worker 只发 HTTP 请求，不加载模型，因此模型权重与 GPU 依赖不会进后端镜像。
+
+```bash
+# 1) 本机安装并启动 MinerU 服务（默认监听 8000），确认可用
+curl -s http://127.0.0.1:8000/docs > /dev/null && echo ok
+
+# 2) 在 .env 里指向该服务
+MINERU_BASE_URL=http://127.0.0.1:8000
+MINERU_TIMEOUT_SECONDS=300      # 必须明显小于 PARSE_SOFT_TIME_LIMIT_SECONDS（默认 900）
+
+# 3) 另开一个窗口/容器，单独消费 MinerU 队列
+celery -A app.workers.celery_app:celery_app worker -Q parse.mineru -l info --pool=solo
+#   或：pwsh -File scripts\start-worker.ps1 -Queue parse.mineru
+```
+
+然后在解析策略里把 `engine` 设为 `mineru`（`doc_type` 只能是 `pdf`）。
+
+- 保存策略时即校验：引擎不支持该 `doc_type`、或 `MINERU_BASE_URL` 为空，直接返回 400，不会把注定失败的任务留给 worker。
+- MinerU 任务投递到 `parse.mineru`，与解析、抽取、索引、看护所用的 `parse` 队列隔离；一次分钟级解析不会堵住索引和心跳看护。
+- 服务不可达、超时、5xx 归为可重试错误 `mineru_unavailable`，按任务重试预算自动重跑；文档结构不合法归为 `parse_error`，不重试。不会自动降级到 `pdf_layout`——失败原因直接暴露在任务详情里。
+- 没有消费者时任务留在队列中等待，不会被丢弃；若不打算使用 MinerU，可以不配 `MINERU_BASE_URL`，其它引擎完全不受影响。
+- 容器部署时 `127.0.0.1` 指容器自身，需改成宿主地址（如 `http://host.docker.internal:8000`）或同一网络里的服务名。
 
 ## 质量门禁
 

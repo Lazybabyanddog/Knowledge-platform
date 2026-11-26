@@ -544,3 +544,111 @@ def test_html_document_publish_index_and_ask(
         db.rollback()
         db.execute(delete(ReviewFlow).where(ReviewFlow.id == flow_id))
         db.commit()
+
+
+def _chunk_contents(session: Session, version_id: uuid.UUID) -> list[str]:
+    return list(
+        session.scalars(
+            select(DocumentChunk.content)
+            .where(DocumentChunk.document_version_id == version_id)
+            .order_by(DocumentChunk.seq)
+        )
+    )
+
+
+def test_index_chunking_follows_strategy_config(
+    db: Session,
+    make_indexed_document: Callable[..., Document],
+) -> None:
+    """切块方式由解析任务关联的策略版本决定：同配置重建幂等，换策略片段数变化。"""
+    token = uuid.uuid4().hex[:6]
+    document = make_indexed_document(f"切块策略-{token}", prebuilt_chunks=False)
+    db.rollback()
+
+    version_id = db.scalar(
+        select(DocumentVersion.id).where(
+            DocumentVersion.document_id == document.id,
+            DocumentVersion.is_current.is_(True),
+        )
+    )
+    assert version_id is not None
+    task = db.scalar(select(ParseTask).where(ParseTask.document_version_id == version_id))
+    assert task is not None
+    original_strategy_id = task.strategy_id
+    original = db.get(ParseStrategy, original_strategy_id)
+
+    # 两个块、每块两个空行分段：block_merge 按块合并成 2 段，
+    # heading_section 因整节超长而按空行拆成 4 段
+    db.execute(delete(ParseBlock).where(ParseBlock.parse_task_id == task.id))
+    heading = "第一章 适用范围"
+
+    def _paragraph(tag: str) -> str:
+        return "".join(f"第{index:02d}句{tag}制度条款内容。" for index in range(20))
+
+    blocks: list[tuple[str, str, int | None]] = [
+        ("title", heading, 1),
+        ("paragraph", f"{_paragraph('甲')}\n\n{_paragraph('乙')}", None),
+        ("paragraph", f"{_paragraph('丙')}\n\n{_paragraph('丁')}", None),
+    ]
+    for seq, (block_type, content, level) in enumerate(blocks):
+        db.add(
+            ParseBlock(
+                parse_task_id=task.id,
+                document_version_id=version_id,
+                seq=seq,
+                block_type=block_type,
+                content=content,
+                page_no=1,
+                level=level,
+            )
+        )
+
+    strategy = ParseStrategy(
+        workspace_id=document.workspace_id,
+        strategy_key=uuid.uuid4().hex,
+        version=1,
+        name=f"切块策略-{token}",
+        doc_type=document.doc_type,
+        engine=original.engine if original is not None else "plain_text",
+        config={"chunk": {"strategy": "block_merge", "size": 800}},
+        is_default=False,
+        status="active",
+        created_by=document.created_by,
+    )
+    db.add(strategy)
+    db.flush()
+    strategy_id = strategy.id
+    task.strategy_id = strategy_id
+    db.commit()
+
+    try:
+        build_version_index(db, version_id)
+        db.commit()
+        merged = _chunk_contents(db, version_id)
+        assert len(merged) == 2
+
+        # 幂等：同一任务、同一配置重复构建，片段完全一致
+        build_version_index(db, version_id)
+        db.commit()
+        assert _chunk_contents(db, version_id) == merged
+
+        strategy.config = {"chunk": {"strategy": "heading_section", "size": 800}}
+        db.commit()
+        build_version_index(db, version_id)
+        db.commit()
+
+        sectioned = _chunk_contents(db, version_id)
+        # 块之间的换行不算空行，所以中间两段被并进同一片段，共 3 段
+        assert len(sectioned) == 3
+        assert len(sectioned) != len(merged)
+        assert all(item.startswith(f"{heading}\n") for item in sectioned)
+        # 换策略需要重建索引才生效：旧片段已被整体替换
+        assert set(sectioned) != set(merged)
+    finally:
+        db.rollback()
+        current = db.get(ParseTask, task.id)
+        if current is not None:
+            current.strategy_id = original_strategy_id
+        db.flush()
+        db.execute(delete(ParseStrategy).where(ParseStrategy.id == strategy_id))
+        db.commit()

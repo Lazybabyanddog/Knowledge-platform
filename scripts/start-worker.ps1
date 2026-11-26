@@ -8,6 +8,10 @@
 
 .EXAMPLE
     pwsh -File scripts\start-worker.ps1
+
+.EXAMPLE
+    # MinerU 解析独占一个队列，需要另开窗口单独启动（配合 MINERU_BASE_URL 使用）
+    pwsh -File scripts\start-worker.ps1 -Queue parse.mineru
 #>
 [CmdletBinding()]
 param(

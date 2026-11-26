@@ -12,16 +12,20 @@ from app.core.exceptions import BadRequestError, NotFoundError
 from app.domain.enums import AuditAction, StrategyStatus
 from app.infra.db.models import ParseStrategy
 from app.infra.db.repositories import ParseStrategyRepository
-from app.parsing.registry import has_engine
+from app.parsing.registry import engine_names, get_engine, has_engine
 from app.schemas.parse import (
+    ParseEngineItem,
     ParseStrategyCreateRequest,
     ParseStrategyItem,
     ParseStrategyUpdateRequest,
 )
 from app.services.audit_service import AuditService
+from app.services.chunk_config import chunk_config_view
+from app.services.glossary.config import alias_config_view
 
 
 def _item(strategy: ParseStrategy) -> ParseStrategyItem:
+    config = dict(strategy.config or {})
     return ParseStrategyItem(
         id=str(strategy.id),
         strategy_key=strategy.strategy_key,
@@ -29,11 +33,29 @@ def _item(strategy: ParseStrategy) -> ParseStrategyItem:
         name=strategy.name,
         doc_type=strategy.doc_type,
         engine=strategy.engine,
-        config=dict(strategy.config or {}),
+        config=config,
+        chunk=chunk_config_view(config),
+        alias=alias_config_view(config),
         is_default=strategy.is_default,
         status=strategy.status,
         created_at=strategy.created_at,
     )
+
+
+def _ensure_engine_usable(engine_name: str, doc_type: str) -> None:
+    """保存策略前就确认引擎可用，别把注定失败的任务留给 worker。
+
+    三层校验：注册表存在 -> 支持该文档类型 -> 引擎自身配置完整
+    （例如 MinerU 服务地址未配置时不该允许保存）。
+    """
+    if not has_engine(engine_name):
+        raise BadRequestError(f"未注册的解析引擎: {engine_name}")
+    engine = get_engine(engine_name)
+    if not engine.supports(doc_type):
+        raise BadRequestError(f"解析引擎 {engine_name} 不支持文档类型 {doc_type}")
+    problem = engine.config_problem()
+    if problem:
+        raise BadRequestError(problem)
 
 
 def _snapshot(strategy: ParseStrategy) -> dict[str, Any]:
@@ -63,6 +85,20 @@ class ParseStrategyService:
     def get_strategy(self, principal: Principal, strategy_id: uuid.UUID) -> ParseStrategyItem:
         return _item(self._get_or_404(principal, strategy_id))
 
+    def list_engines(self) -> list[ParseEngineItem]:
+        """引擎候选来自注册表，前端不再自己维护一份容易漂移的清单。"""
+        items = []
+        for name in engine_names():
+            engine = get_engine(name)
+            items.append(
+                ParseEngineItem(
+                    name=engine.name,
+                    display_name=engine.display_name or engine.name,
+                    doc_types=list(engine.doc_types),
+                )
+            )
+        return items
+
     def create_strategy(
         self,
         principal: Principal,
@@ -70,8 +106,7 @@ class ParseStrategyService:
         *,
         ip: str | None = None,
     ) -> ParseStrategyItem:
-        if not has_engine(payload.engine):
-            raise BadRequestError(f"未注册的解析引擎: {payload.engine}")
+        _ensure_engine_usable(payload.engine, payload.doc_type)
         if payload.is_default:
             # 默认策略按 doc_type 唯一，先让位再插入
             self.strategies.clear_default(principal.user.workspace_id, payload.doc_type)
@@ -116,8 +151,10 @@ class ParseStrategyService:
         if base is None:  # pragma: no cover - 数据完整性兜底
             raise NotFoundError("策略版本不存在")
 
-        if payload.engine is not None and not has_engine(payload.engine):
-            raise BadRequestError(f"未注册的解析引擎: {payload.engine}")
+        # 文档类型不可变，引擎可能被本次修改替换，按修改后的组合校验
+        _ensure_engine_usable(
+            payload.engine if payload.engine is not None else base.engine, base.doc_type
+        )
 
         inherits_default = base.is_default
         new_version = ParseStrategy(

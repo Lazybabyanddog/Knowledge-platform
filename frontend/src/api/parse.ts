@@ -1,9 +1,17 @@
 import { http } from './http'
-import type { Page, ParseBlock, ParseStrategy, ParseTask, ParseTaskDetail } from './types'
+import type {
+  Page,
+  ParseBlock,
+  ParseEngine,
+  ParseStrategy,
+  ParseTask,
+  ParseTaskDetail,
+} from './types'
 
 export const parseApi = {
   strategies: (docType?: string) =>
     http.get<{ items: ParseStrategy[] }>('/parse-strategies', docType ? { doc_type: docType } : {}),
+  engines: () => http.get<{ items: ParseEngine[] }>('/parse-strategies/engines'),
   createStrategy: (body: {
     name: string
     doc_type: string

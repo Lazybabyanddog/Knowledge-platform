@@ -1,0 +1,2 @@
+# 发布记录：current.json（当前状态）+ releases.jsonl（只追加的历史）。
+# 由 scripts/release.ps1 / rollback.ps1 写入。

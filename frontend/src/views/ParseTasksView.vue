@@ -27,7 +27,27 @@ const statusOptions = Object.entries(TASK_STATUS)
   .filter(([value]) => ['pending', 'running', 'succeeded', 'failed', 'cancelled'].includes(value))
   .map(([value, meta]) => ({ value, label: meta.label }))
 
-const detailSummary = computed(() => detail.value?.stats ?? {})
+const detailSummary = computed(() => {
+  const stats = detail.value?.stats ?? {}
+  // 嵌套对象（如 glossary 快照）不适合塞进 tag，过滤掉避免出现 [object Object]
+  return Object.fromEntries(
+    Object.entries(stats).filter(([, value]) => typeof value !== 'object' || value === null),
+  )
+})
+
+const glossary = computed(() => {
+  const view = detail.value?.glossary
+  return view && Object.keys(view).length ? view : null
+})
+
+const glossarySummary = computed(() => {
+  const view = glossary.value
+  if (!view) return ''
+  if (view.status === 'degraded') return '名词典抽取失败，已跳过'
+  const counts = view.counts
+  if (!counts) return '名词典'
+  return `名词典 ${counts.confirmed + counts.candidate} 条（确定 ${counts.confirmed} / 候选 ${counts.candidate} / 丢弃 ${counts.dropped}）`
+})
 
 async function load(): Promise<void> {
   loading.value = true
@@ -319,6 +339,20 @@ onMounted(load)
           </div>
 
           <div class="stats-row">
+            <el-tooltip
+              v-if="glossary"
+              :disabled="glossary.status !== 'degraded'"
+              :content="glossary.error ?? '不影响索引，可重建后再看'"
+              placement="top"
+            >
+              <el-tag
+                size="small"
+                :type="glossary.status === 'degraded' ? 'warning' : 'success'"
+                effect="plain"
+              >
+                {{ glossarySummary }}
+              </el-tag>
+            </el-tooltip>
             <el-tag v-for="(value, key) in detailSummary" :key="key" size="small" effect="plain">
               {{ key }}: {{ value }}
             </el-tag>

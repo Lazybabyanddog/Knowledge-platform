@@ -167,6 +167,48 @@ export interface BatchUploadResponse {
 
 export type ParseTaskStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'cancelled'
 export type DocType = 'pdf' | 'office' | 'image' | 'text' | 'html'
+export type ChunkStrategy = 'block_merge' | 'fixed_window' | 'heading_section'
+
+/** 后端解析后的生效切块配置（缺省值已补齐） */
+export interface ChunkConfigView {
+  strategy: ChunkStrategy
+  size: number
+  overlap: number
+}
+
+/** ALIAS/ROLE 可产出确定项，RELATION 只产出候选 */
+export type AliasKind = 'ALIAS' | 'ROLE' | 'RELATION'
+export type AliasCardinality = 'ONE' | 'MANY' | 'UNKNOWN'
+
+export interface AliasRuleShapes {
+  suffixes: string[]
+  wrappers: string[]
+  stop_words: string[]
+  max_len: number
+}
+
+/** 后端解析后的生效别名规则（缺省值已补齐） */
+export interface AliasRule {
+  name: string
+  kind: AliasKind
+  triggers: string[]
+  shapes: AliasRuleShapes
+  target_cardinality: AliasCardinality
+  priority: number
+  regex: string | null
+}
+
+export interface AliasConfigView {
+  enabled: boolean
+  use_builtin: boolean
+  rules: AliasRule[]
+}
+
+export interface ParseEngine {
+  name: string
+  display_name: string
+  doc_types: DocType[]
+}
 
 export interface ParseStrategy {
   id: string
@@ -176,6 +218,9 @@ export interface ParseStrategy {
   doc_type: DocType
   engine: string
   config: Record<string, unknown>
+  chunk: ChunkConfigView
+  /** 生效别名配置；历史脏配置为空对象 */
+  alias: AliasConfigView
   is_default: boolean
   status: string
   created_at: string
@@ -248,10 +293,49 @@ export interface ParseTask {
   block_count: number
 }
 
+export interface GlossaryCounts {
+  raw: number
+  confirmed: number
+  candidate: number
+  dropped: number
+}
+
+export interface GlossaryEntry {
+  surface: string
+  canonical: string | null
+  candidates: string[]
+  kind: string
+  certainty: 'CONFIRMED' | 'CANDIDATE'
+  resolution: string
+  rule: string
+  priority: number
+  block_ids: string[]
+  evidence_block_id: string | null
+}
+
+export interface GlossaryRuleHit {
+  name: string
+  kind: string
+  priority: number
+  source: 'builtin' | 'custom'
+}
+
+/** 解析任务详情里的名词典视图；未启用或历史数据为空对象 */
+export interface GlossaryView {
+  status: string
+  builtin_version?: number
+  counts: GlossaryCounts
+  rules?: GlossaryRuleHit[]
+  error?: string
+  entries: GlossaryEntry[]
+  truncated: boolean
+}
+
 export interface ParseTaskDetail extends ParseTask {
   warnings: string[]
   attempts: ParseAttempt[]
   actions: TaskActions
+  glossary: Partial<GlossaryView>
 }
 
 export interface ParseBlock {

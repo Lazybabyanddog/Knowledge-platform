@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from fastapi import FastAPI
@@ -11,11 +12,13 @@ from app import __version__
 from app.core.config import settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import RequestIdMiddleware, configure_logging
+from app.core.readiness import check_readiness
 from app.core.response import EnvelopeMiddleware, ok
 
 
 def create_app() -> FastAPI:
     configure_logging(logging.DEBUG if settings.debug else logging.INFO)
+    _verify_parsing_engines()
 
     app = FastAPI(
         title="AI Platform API",
@@ -42,11 +45,41 @@ def create_app() -> FastAPI:
     _register_routers(app)
     _log_recovery_config()
 
-    @app.get("/healthz", tags=["system"], summary="健康检查")
+    @app.get("/healthz", tags=["system"], summary="存活检查")
     async def healthz() -> object:
-        return ok({"status": "ok", "env": settings.app_env, "version": __version__})
+        # 只反映进程存活：查依赖会因抖动触发容器反复重启，那是 /readyz 的职责
+        return ok(
+            {
+                "status": "ok",
+                "env": settings.app_env,
+                "version": __version__,
+                "release": settings.release_version,
+                "color": settings.release_color,
+            }
+        )
+
+    @app.get("/readyz", tags=["system"], summary="就绪检查")
+    async def readyz() -> object:
+        # 同步探针（驱动都是同步的）放到线程里跑，避免阻塞事件循环
+        report = await asyncio.to_thread(check_readiness)
+        ready = report["status"] != "unavailable"
+        return ok(
+            report,
+            message="ok" if ready else "unavailable",
+            status_code=200 if ready else 503,
+        )
 
     return app
+
+
+def _verify_parsing_engines() -> None:
+    """启动自检：引擎依赖缺失时立刻失败，而不是等用户上传文件才 500。"""
+    from app.parsing import engine_names
+
+    names = engine_names()
+    if not names:
+        raise RuntimeError("解析引擎注册表为空：app.parsing.engines 未被导入")
+    logging.getLogger(__name__).info("解析引擎就绪: %s", ", ".join(names))
 
 
 def _log_recovery_config() -> None:

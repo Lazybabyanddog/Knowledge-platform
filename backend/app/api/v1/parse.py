@@ -14,6 +14,7 @@ from app.domain.policies import Permission
 from app.infra.db.session import get_db
 from app.schemas.parse import (
     ParseBlockListResponse,
+    ParseEngineListResponse,
     ParseStrategyCreateRequest,
     ParseStrategyItem,
     ParseStrategyListResponse,
@@ -44,6 +45,23 @@ def list_strategies(
 ) -> ParseStrategyListResponse:
     items = ParseStrategyService(db).list_strategies(principal, doc_type)
     return ParseStrategyListResponse(items=items)
+
+
+@strategies_router.get(
+    "/engines", response_model=ParseEngineListResponse, summary="可用解析引擎"
+)
+def list_engines(_principal: ReadPrincipal, db: DbSession) -> ParseEngineListResponse:
+    # 必须声明在 /{strategy_id} 之前，否则 engines 会被当成 id 解析
+    return ParseEngineListResponse(items=ParseStrategyService(db).list_engines())
+
+
+@strategies_router.get(
+    "/{strategy_id}", response_model=ParseStrategyItem, summary="策略详情"
+)
+def get_strategy(
+    strategy_id: uuid.UUID, principal: ReadPrincipal, db: DbSession
+) -> ParseStrategyItem:
+    return ParseStrategyService(db).get_strategy(principal, strategy_id)
 
 
 @strategies_router.post("", response_model=ParseStrategyItem, status_code=201, summary="新建策略")
